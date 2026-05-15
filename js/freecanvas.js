@@ -345,6 +345,72 @@ const FreeCanvas = {
             else { ctx.beginPath(); this._path(ctx, pts); ctx.stroke(); }
             ctx.restore(); return;
         }
+        // 荧光笔：宽扁半透明
+        if (s.brushType === 'highlighter') {
+            ctx.save();
+            ctx.globalAlpha = 0.28;
+            ctx.strokeStyle = s.color; ctx.lineWidth = s.size * 2.2;
+            ctx.lineCap = 'butt'; ctx.lineJoin = 'round';
+            if (pts.length === 1) { ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.size * 1.1, 0, Math.PI * 2); ctx.fill(); }
+            else { ctx.beginPath(); this._path(ctx, pts); ctx.stroke(); }
+            ctx.restore(); return;
+        }
+        // 彩虹笔：颜色渐变
+        if (s.brushType === 'rainbow') {
+            const rainbow = ['#FF6B6B','#FFB347','#FFE066','#6BCB77','#74B9FF','#C77DFF','#FD79A8'];
+            ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = s.size;
+            for (let i = 1; i < pts.length; i++) {
+                ctx.strokeStyle = rainbow[i % rainbow.length];
+                ctx.beginPath(); ctx.moveTo(pts[i-1].x, pts[i-1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
+            }
+            if (pts.length === 1) {
+                ctx.fillStyle = rainbow[0];
+                ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.size / 2, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.restore(); return;
+        }
+        // 喷雾：随机散点
+        if (s.brushType === 'spray') {
+            ctx.save(); ctx.fillStyle = s.color;
+            pts.forEach(p => {
+                for (let i = 0; i < 12; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * s.size * 1.2;
+                    const dotR = Math.random() * 2 + 0.5;
+                    ctx.globalAlpha = Math.random() * 0.5 + 0.2;
+                    ctx.beginPath(); ctx.arc(p.x + Math.cos(angle) * radius, p.y + Math.sin(angle) * radius, dotR, 0, Math.PI * 2); ctx.fill();
+                }
+            });
+            ctx.restore(); return;
+        }
+        // 发光笔：neon glow 效果
+        if (s.brushType === 'glow') {
+            ctx.save();
+            // 外层光晕
+            ctx.shadowColor = s.color; ctx.shadowBlur = s.size * 2;
+            ctx.globalAlpha = 0.4; ctx.strokeStyle = s.color; ctx.lineWidth = s.size * 1.5;
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            if (pts.length === 1) { ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.size / 2, 0, Math.PI * 2); ctx.fill(); }
+            else { ctx.beginPath(); this._path(ctx, pts); ctx.stroke(); }
+            // 内层亮芯
+            ctx.shadowBlur = s.size;
+            ctx.globalAlpha = 0.9; ctx.strokeStyle = '#fff'; ctx.lineWidth = s.size * 0.4;
+            if (pts.length === 1) { ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.size * 0.2, 0, Math.PI * 2); ctx.fill(); }
+            else { ctx.beginPath(); this._path(ctx, pts); ctx.stroke(); }
+            ctx.restore(); return;
+        }
+        // 虚线笔
+        if (s.brushType === 'dotted') {
+            ctx.save();
+            ctx.strokeStyle = s.color; ctx.lineWidth = s.size * 0.6;
+            ctx.setLineDash([s.size * 0.8, s.size * 1.2]);
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = 0.85;
+            if (pts.length === 1) { ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.size / 3, 0, Math.PI * 2); ctx.fill(); }
+            else { ctx.beginPath(); this._path(ctx, pts); ctx.stroke(); }
+            ctx.setLineDash([]);
+            ctx.restore(); return;
+        }
+        // 原有画笔：crayon / marker / brush
         ctx.save();
         ctx.globalAlpha = s.brushType === 'marker' ? 0.35 : s.brushType === 'brush' ? 0.88 : 0.85;
         ctx.strokeStyle = s.color; ctx.lineWidth = s.brushType === 'marker' ? s.size * 0.7 : s.size;
