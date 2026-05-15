@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" "black-translucent">
+    <title>画画乐园</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 首页 -->
+    <div id="home" class="scene active">
+        <div class="home-bg"></div>
+        <div class="home-content">
+            <div class="home-title">
+                <span class="title-deco title-deco-left">🌈</span>
+                <span class="title-text">画画乐园</span>
+                <span class="title-deco title-deco-right">🎨</span>
+            </div>
+            <div class="home-subtitle">选一个开始玩吧！</div>
+            <div class="home-cards">
+                <div class="home-card" id="btn-tracing">
+                    <div class="card-icon">
+                        <div class="icon-shape-trace">
+                            <svg viewBox="0 0 120 120" width="90" height="90">
+                                <!-- 可爱的星星形状 -->
+                                <polygon points="60,10 73,45 110,45 80,68 90,105 60,82 30,105 40,68 10,45 47,45"
+                                    fill="none" stroke="#fff" stroke-width="5" stroke-dasharray="8,5" stroke-linejoin="round"/>
+                                <!-- 小手指标记 -->
+                                <circle cx="60" cy="10" r="7" fill="#FFD93D" stroke="#fff" stroke-width="2"/>
+                                <text x="60" y="14" text-anchor="middle" font-size="9" fill="#fff">1</text>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="card-label">描边填色</div>
+                    <div class="card-hint">沿着虚线画一画</div>
+                </div>
+                <div class="home-card" id="btn-freecanvas">
+                    <div class="card-icon">
+                        <div class="icon-shape-draw">
+                            <svg viewBox="0 0 120 120" width="90" height="90">
+                                <!-- 蜡笔/画笔图标 -->
+                                <ellipse cx="35" cy="85" rx="18" ry="8" fill="#FFE066" stroke="#fff" stroke-width="2" transform="rotate(-30 35 85)"/>
+                                <ellipse cx="60" cy="60" rx="20" ry="10" fill="#FF6B6B" stroke="#fff" stroke-width="2" transform="rotate(15 60 60)"/>
+                                <ellipse cx="85" cy="40" rx="16" ry="7" fill="#74B9FF" stroke="#fff" stroke-width="2" transform="rotate(-10 85 40)"/>
+                                <!-- 飞溅的颜料点 -->
+                                <circle cx="45" cy="30" r="5" fill="#A29BFE" opacity="0.8"/>
+                                <circle cx="75" cy="75" r="6" fill="#FFEAA7" opacity="0.8"/>
+                                <circle cx="25" cy="50" r="4" fill="#55EFC4" opacity="0.8"/>
+                                <circle cx="95" cy="65" r="5" fill="#FD79A8" opacity="0.8"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="card-label">自由画布</div>
+                    <div class="card-hint">想画什么就画什么</div>
+                </div>
+            </div>
+        </div>
+        <!-- 装饰性浮动元素 -->
+        <div class="floating-shapes">
+            <div class="float-shape shape-1">⭐</div>
+            <div class="float-shape shape-2">🦋</div>
+            <div class="float-shape shape-3">🌸</div>
+            <div class="float-shape shape-4">🍀</div>
+            <div class="float-shape shape-5">🎈</div>
+            <div class="float-shape shape-6">🌻</div>
+        </div>
+    </div>
+
+    <!-- 描边填色场景 -->
+    <div id="tracing" class="scene">
+        <div class="scene-header tracing-header">
+            <button class="btn-back btn-icon" id="tracing-back" data-action="back">
+                <svg viewBox="0 0 24 24" width="24" height="24"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="tracing-info" id="tracing-info">圆形</div>
+        </div>
+        <canvas id="tracing-canvas"></canvas>
+        <div class="tracing-toolbar" id="tracing-toolbar">
+            <div class="color-picker" id="tracing-colors"></div>
+        </div>
+    </div>
+
+    <!-- 自由画布场景 -->
+    <div id="freecanvas" class="scene">
+        <canvas id="freecanvas-canvas"></canvas>
+        <div class="fc-toolbar">
+            <!-- 工具 -->
+            <div class="tool-group">
+                <button class="tool-btn" data-tool="brush" title="画笔">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 21l1.5-4.5L17 4l3 3L7.5 19.5z" fill="currentColor"/></svg>
+                </button>
+                <button class="tool-btn" data-tool="brush" data-type="eraser" title="橡皮擦">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M16 4L4 16l4 4h4l8-8-4-4zM8 20H4l4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button class="tool-btn" data-tool="shape" title="图形">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><polygon points="12,3 22,21 2,21" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                </button>
+                <button class="tool-btn active" data-tool="sticker" title="贴纸">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.9z" fill="currentColor"/></svg>
+                </button>
+                <button class="tool-btn" data-tool="fill" title="填充">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M16 4l-9 9 5 5 9-9-5-5zM2 22l4-1-3-3-1 4z" fill="currentColor"/></svg>
+                </button>
+                <button class="tool-btn" data-tool="pan" title="拖动画布">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <!-- 画笔类型 -->
+            <div class="brush-type-group">
+                <button class="brush-type-btn active" data-type="crayon" title="彩笔">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 21l1.5-4.5L17 4l3 3L7.5 19.5z" fill="currentColor"/></svg>
+                </button>
+                <button class="brush-type-btn" data-type="marker" title="马克笔">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><rect x="5" y="3" width="14" height="7" rx="2" fill="currentColor" opacity="0.5"/><rect x="5" y="10" width="14" height="11" rx="1" fill="currentColor"/></svg>
+                </button>
+                <button class="brush-type-btn" data-type="brush" title="毛笔">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2c-1 4-3 8-5 12-1 2 0 5 2 7h6c2-2 3-5 2-7-2-4-4-8-5-12z" fill="currentColor"/></svg>
+                </button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <!-- 画笔大小 -->
+            <div class="size-group">
+                <button class="size-btn" data-size="6"><span class="size-dot" style="width:6px;height:6px"></span></button>
+                <button class="size-btn active" data-size="14"><span class="size-dot" style="width:12px;height:12px"></span></button>
+                <button class="size-btn" data-size="24"><span class="size-dot" style="width:18px;height:18px"></span></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <!-- 颜色 -->
+            <div class="color-picker" id="freecanvas-colors"></div>
+            <div class="toolbar-divider"></div>
+            <!-- 图形分类tab -->
+            <div class="shape-cat-group">
+                <button class="shape-cat-btn active" data-cat="friends">伙伴</button>
+                <button class="shape-cat-btn" data-cat="chickteam">萌鸡</button>
+                <button class="shape-cat-btn" data-cat="magic">童话</button>
+                <button class="shape-cat-btn" data-cat="toys">玩具</button>
+                <button class="shape-cat-btn" data-cat="snacks">甜点</button>
+                <button class="shape-cat-btn" data-cat="ocean">海洋</button>
+                <button class="shape-cat-btn" data-cat="dino">恐龙</button>
+                <button class="shape-cat-btn" data-cat="space">太空</button>
+                <button class="shape-cat-btn" data-cat="music">音乐</button>
+            </div>
+            <!-- 贴纸选择（动态渲染） -->
+            <div class="shape-group" id="shape-buttons"></div>
+            <!-- 图形大小 -->
+            <div class="shape-size-group">
+                <button class="shape-size-btn" data-size="25">小</button>
+                <button class="shape-size-btn active" data-size="45">中</button>
+                <button class="shape-size-btn" data-size="75">大</button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <!-- 底色 -->
+            <div class="bg-group" id="bg-colors"></div>
+            <div class="toolbar-divider"></div>
+            <!-- 功能 -->
+            <div class="action-tools">
+                <button class="btn-action btn-clear" data-action="clear" title="清除">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 6h18M8 6V4h8v2M5 6v14a2 2 0 002 2h10a2 2 0 002-2V6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+                </button>
+                <button class="btn-action btn-back" data-action="back" title="返回">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 庆祝动画层 -->
+    <div id="celebration" class="celebration"></div>
+
+    <script src="js/shapes.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/stickers.js"></script>
+    <script src="js/tracing.js"></script>
+    <script src="js/freecanvas.js"></script>
+</body>
+</html>
