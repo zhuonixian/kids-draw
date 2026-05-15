@@ -240,7 +240,19 @@ const COLORS = [
     { name: '蓝', hex: '#74B9FF' },
     { name: '紫', hex: '#A29BFE' },
     { name: '粉', hex: '#FD79A8' },
-    { name: '棕', hex: '#C08552' }
+    { name: '棕', hex: '#C08552' },
+    { name: '深红', hex: '#E17055' },
+    { name: '深橙', hex: '#FF8A65' },
+    { name: '浅黄', hex: '#FFE066' },
+    { name: '深绿', hex: '#00B894' },
+    { name: '深蓝', hex: '#0984E3' },
+    { name: '浅紫', hex: '#C77DFF' },
+    { name: '玫红', hex: '#E84393' },
+    { name: '深棕', hex: '#6D4C41' },
+    { name: '白', hex: '#FFFFFF' },
+    { name: '浅灰', hex: '#B2BEC3' },
+    { name: '深灰', hex: '#636E72' },
+    { name: '黑', hex: '#2D3436' }
 ];
 
 // 创建颜色选择器
@@ -251,6 +263,10 @@ function createColorPicker(containerId, onSelect) {
         dot.className = 'color-dot' + (i === 0 ? ' active' : '');
         dot.style.backgroundColor = color.hex;
         dot.dataset.color = color.hex;
+        // 白色和浅色加边框
+        if (color.hex === '#FFFFFF' || color.hex === '#FFE066' || color.hex === '#FFF8E7') {
+            dot.style.borderColor = 'rgba(0,0,0,0.18)';
+        }
         dot.addEventListener('click', () => {
             container.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
             dot.classList.add('active');

@@ -354,14 +354,15 @@ html, body {
    ============================================ */
 .color-picker {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    max-width: 260px;
 }
 
 .color-dot {
-    width: 42px;
-    height: 42px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     border: 3px solid rgba(0,0,0,0.08);
     cursor: pointer;
@@ -409,7 +410,8 @@ html, body {
    自由画布工具栏
    ============================================ */
 .fc-toolbar {
-    height: 80px;
+    min-height: 80px;
+    height: auto;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -439,6 +441,7 @@ html, body {
     gap: 4px;
     align-items: center;
     flex-shrink: 0;
+    flex-wrap: wrap;
 }
 
 /* 通用工具/画笔/图形按钮 */
