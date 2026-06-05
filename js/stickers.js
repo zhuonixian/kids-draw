@@ -1,9 +1,11 @@
 // === 原创卡通贴图库 ===
+// 本文件所有贴纸图形均由程序化 SVG 生成，为项目原创内容。
+// 角色设计为通用卡通风格，不引用或模仿任何已知商业 IP。
 // source 支持 SVG data URI，也可以替换为 assets/stickers/*.png。
 const StickerLibrary = {
     categories: {
-        friends: { label: '伙伴', stickers: ['piglet', 'chickhero', 'bunnykid', 'bearbuddy', 'catstar', 'puppy'] },
-        chickteam: { label: '萌鸡', stickers: ['captainchick', 'flowerchick', 'babychick', 'pilotchick'] },
+        friends: { label: '伙伴', stickers: ['pinkypig', 'chickhero', 'bunnykid', 'bearbuddy', 'catstar', 'puppy'] },
+        chickteam: { label: '小鸡一家', stickers: ['captainchick', 'flowerchick', 'babychick', 'pilotchick'] },
         magic: { label: '童话', stickers: ['girlbuddy', 'boybuddy', 'leafsprite', 'cloudbaby'] },
         toys: { label: '玩具', stickers: ['smilecar', 'rocketpal', 'trainkid', 'balloonpal'] },
         snacks: { label: '甜点', stickers: ['strawberry', 'sunny', 'mushroomkid', 'flowerkid'] },
@@ -18,7 +20,7 @@ const StickerLibrary = {
     },
 
     items: [
-        { id: 'piglet', name: '小粉猪', assetType: 'svg', source: makeStickerSvg('#FF9BB3', 'pig') },
+        { id: 'pinkypig', name: '小粉猪', assetType: 'svg', source: makeStickerSvg('#FF9BB3', 'pig') },
         { id: 'chickhero', name: '元气小鸡', assetType: 'svg', source: makeStickerSvg('#FFD94A', 'chick') },
         { id: 'bunnykid', name: '跳跳兔', assetType: 'svg', source: makeStickerSvg('#FFFFFF', 'bunny') },
         { id: 'bearbuddy', name: '抱抱熊', assetType: 'svg', source: makeStickerSvg('#C98A54', 'bear') },

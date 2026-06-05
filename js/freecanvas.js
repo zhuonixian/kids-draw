@@ -10,7 +10,7 @@ const FreeCanvas = {
     currentTool: 'sticker',
     bgColor: '#FFFFFF',
     shapeSize: 40, // 图形大小
-    currentStickerId: 'piglet',
+    currentStickerId: 'pinkypig',
     currentStickerCategory: 'friends',
     stickerImages: {},
 
