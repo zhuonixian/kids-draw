@@ -1,0 +1,4 @@
+.kids-draw.pid
+.kids-draw.log
+node_modules/
+.DS_Store
