@@ -5,6 +5,7 @@ const App = {
     audioCtx: null,
     _lastDrawSound: 0,
     _audioUnlocked: false,
+    _noiseBuffer: null,
 
     init() {
         this.preventGestures();
@@ -169,10 +170,19 @@ const App = {
     _noise(duration = 0.055, volume = 0.12) {
         try {
             const ctx = this._getAudioCtx();
+            if (!this._noiseBuffer || this._noiseBuffer.sampleRate !== ctx.sampleRate) {
+                const frameCount = Math.max(1, Math.floor(ctx.sampleRate * 0.06));
+                const buf = ctx.createBuffer(1, frameCount, ctx.sampleRate);
+                const data = buf.getChannelData(0);
+                for (let i = 0; i < frameCount; i++) data[i] = Math.random() * 2 - 1;
+                this._noiseBuffer = buf;
+            }
             const frameCount = Math.max(1, Math.floor(ctx.sampleRate * duration));
             const buffer = ctx.createBuffer(1, frameCount, ctx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < frameCount; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / frameCount);
+            const src = this._noiseBuffer.getChannelData(0);
+            const dst = buffer.getChannelData(0);
+            const offset = Math.floor(Math.random() * (src.length - frameCount));
+            for (let i = 0; i < frameCount; i++) dst[i] = src[offset + i] * (1 - i / frameCount);
             const source = ctx.createBufferSource();
             const filter = ctx.createBiquadFilter();
             const gain = ctx.createGain();

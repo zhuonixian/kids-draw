@@ -19,6 +19,11 @@ const FreeCanvas = {
     _isDrawing: false,
     _lastPoint: null,
 
+    // 离屏缓存
+    _cacheCanvas: null,
+    _cacheCtx: null,
+    _cacheDirty: true,
+
     // 无限画布
     panX: 0, panY: 0,
     _panStart: null, _panPanStart: null,
@@ -59,6 +64,12 @@ const FreeCanvas = {
         this.canvas.height = r.height * this.dpr;
         this.ctx = this.canvas.getContext('2d');
         this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+        this._cacheCanvas = document.createElement('canvas');
+        this._cacheCanvas.width = this.canvas.width;
+        this._cacheCanvas.height = this.canvas.height;
+        this._cacheCtx = this._cacheCanvas.getContext('2d');
+        this._cacheDirty = true;
     },
 
     // === UI 初始化 ===
@@ -125,13 +136,13 @@ const FreeCanvas = {
             d.className = 'bg-dot' + (i === 0 ? ' active' : '');
             d.style.backgroundColor = c;
             if (c === '#FFFFFF') d.style.border = '2px solid #ddd';
-            d.onclick = () => { bg.querySelectorAll('.bg-dot').forEach(x => x.classList.remove('active')); d.classList.add('active'); this.bgColor = c; this.redraw(); };
+            d.onclick = () => { bg.querySelectorAll('.bg-dot').forEach(x => x.classList.remove('active')); d.classList.add('active'); this.bgColor = c; this._cacheDirty = true; this.redraw(); };
             bg.appendChild(d);
         });
 
         // 功能按钮
         const clearBtn = document.querySelector('.action-tools .btn-clear');
-        if (clearBtn) clearBtn.onclick = () => { this.objects = []; this.panX = 0; this.panY = 0; this.redraw(); };
+        if (clearBtn) clearBtn.onclick = () => { this.objects = []; this.panX = 0; this.panY = 0; this._cacheDirty = true; this.redraw(); };
         const backBtn = document.querySelector('.action-tools .btn-back');
         if (backBtn) App.longPress(backBtn, () => App.showScene('home'));
     },
@@ -239,6 +250,7 @@ const FreeCanvas = {
             const s = e.touches ? e.touches[0] : e;
             this.panX = this._panPanStart.x + (s.clientX - this._panStart.x);
             this.panY = this._panPanStart.y + (s.clientY - this._panStart.y);
+            this._cacheDirty = true;
             this.redraw(); return;
         }
         if (this.currentTool === 'brush') this._continueStroke(this._wPos(e));
@@ -265,18 +277,23 @@ const FreeCanvas = {
         if (!this._pending) { this._pending = true; requestAnimationFrame(() => { this.redraw(); this._pending = false; }); }
     },
     _endStroke() {
-        if (this.currentStroke && this.currentStroke.points.length) this.objects.push(this.currentStroke);
+        if (this.currentStroke && this.currentStroke.points.length) {
+            this.objects.push(this.currentStroke);
+            this._cacheDirty = true;
+        }
         this.currentStroke = null; this._isDrawing = false;
     },
 
     // === 放置图形 ===
     _placeShape(pos) {
         this.objects.push({ type: 'shape', shapeType: this.currentShapeType, x: pos.x, y: pos.y, size: this.shapeSize, fillColor: null, strokeColor: this.currentColor, strokeWidth: 3 });
+        this._cacheDirty = true;
         this.redraw();
     },
 
     _placeSticker(pos) {
         this.objects.push({ type: 'sticker', stickerId: this.currentStickerId, x: pos.x, y: pos.y, size: this.shapeSize * 1.6 });
+        this._cacheDirty = true;
         this.redraw();
         if (typeof App !== 'undefined' && App.playStickerSound) App.playStickerSound();
     },
@@ -289,6 +306,7 @@ const FreeCanvas = {
                 const dx = pos.x - o.x, dy = pos.y - o.y;
                 if (dx * dx + dy * dy <= o.size * o.size * 1.2) {
                     o.fillColor = this.currentColor;
+                    this._cacheDirty = true;
                     if (typeof App !== 'undefined' && App.playFillSound) App.playFillSound();
                     this.redraw(); return;
                 }
@@ -304,11 +322,27 @@ const FreeCanvas = {
         ctx.fillStyle = this.bgColor; ctx.fillRect(0, 0, r.width, r.height);
         ctx.restore();
 
-        ctx.save();
-        ctx.setTransform(this.dpr, 0, 0, this.dpr, this.dpr * this.panX, this.dpr * this.panY);
-        this.objects.forEach(o => this._drawObj(ctx, o));
-        if (this.currentStroke) this._drawObj(ctx, this.currentStroke);
-        ctx.restore();
+        if (this._cacheDirty && this._cacheCtx) {
+            const cc = this._cacheCtx;
+            cc.clearRect(0, 0, this._cacheCanvas.width, this._cacheCanvas.height);
+            cc.setTransform(this.dpr, 0, 0, this.dpr, this.dpr * this.panX, this.dpr * this.panY);
+            this.objects.forEach(o => this._drawObj(cc, o));
+            this._cacheDirty = false;
+        }
+
+        if (this._cacheCanvas) {
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.drawImage(this._cacheCanvas, 0, 0);
+            ctx.restore();
+        }
+
+        if (this.currentStroke) {
+            ctx.save();
+            ctx.setTransform(this.dpr, 0, 0, this.dpr, this.dpr * this.panX, this.dpr * this.panY);
+            this._drawObj(ctx, this.currentStroke);
+            ctx.restore();
+        }
     },
 
     _drawObj(ctx, o) {

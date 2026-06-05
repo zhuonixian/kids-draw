@@ -188,7 +188,8 @@ const Tracing = {
             this._animRunning = true;
             const loop = () => {
                 if (this.mode !== 'tracing') { this._animRunning = false; return; }
-                this.redraw(); requestAnimationFrame(loop);
+                this.redraw();
+                setTimeout(() => requestAnimationFrame(loop), 50);
             };
             requestAnimationFrame(loop);
         }
