@@ -44,8 +44,10 @@ const FreeCanvas = {
         this._preloadStickers();
         this._initUI();
         if (!this._eventsBound) { this._addEvents(); this._eventsBound = true; }
+        if (!this._onResize) {
+            this._onResize = () => { this._resizeCanvas(); this.redraw(); };
+        }
         window.removeEventListener('resize', this._onResize);
-        this._onResize = () => { this._resizeCanvas(); this.redraw(); };
         window.addEventListener('resize', this._onResize);
         this.redraw();
     },
@@ -160,10 +162,12 @@ const FreeCanvas = {
 
     _preloadStickers() {
         if (typeof StickerLibrary === 'undefined') return;
+        let pending = 0;
         StickerLibrary.items.forEach(sticker => {
             if (this.stickerImages[sticker.id]) return;
             const img = new Image();
-            img.onload = () => this.redraw();
+            pending++;
+            img.onload = () => { if (--pending === 0) this.redraw(); };
             img.src = sticker.source;
             this.stickerImages[sticker.id] = img;
         });

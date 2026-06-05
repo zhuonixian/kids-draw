@@ -43,8 +43,10 @@ const Tracing = {
 
         if (!this._eventsBound) { this._addEvents(); this._eventsBound = true; }
 
+        if (!this._onResize) {
+            this._onResize = () => { this.resizeCanvas(); this.redraw(); };
+        }
         window.removeEventListener('resize', this._onResize);
-        this._onResize = () => { this.resizeCanvas(); this.redraw(); };
         window.addEventListener('resize', this._onResize);
 
         requestAnimationFrame(() => { this.resizeCanvas(); this.startTracing(); });
@@ -261,7 +263,10 @@ const Tracing = {
 
     // 完成率检测（只在松手时调用一次）
     _getFillRate() {
-        const tmp = document.createElement('canvas');
+        if (!this._rateCanvas) {
+            this._rateCanvas = document.createElement('canvas');
+        }
+        const tmp = this._rateCanvas;
         tmp.width = this.fillCanvas.width; tmp.height = this.fillCanvas.height;
         const tc = tmp.getContext('2d');
         tc.drawImage(this.maskCanvas, 0, 0);
