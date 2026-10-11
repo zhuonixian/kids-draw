@@ -35,8 +35,8 @@ const Tracing = {
     // === 形状图鉴弹层 ===
     // Shapes 正在扩充（category: basic/number/letter/animal/vehicle），
     // 未标注 category 的形状一律归入 basic，代码对 Shapes 数量/顺序不做假设
-    _SHAPE_CATS: { basic: '基础', number: '数字', letter: '字母', animal: '动物', vehicle: '交通' },
-    _SHAPE_CAT_ORDER: ['basic', 'number', 'letter', 'animal', 'vehicle'],
+    _SHAPE_CATS: { basic: '基础', chinese: '汉字', number: '数字', letter: '字母', animal: '动物', vehicle: '交通' },
+    _SHAPE_CAT_ORDER: ['basic', 'chinese', 'number', 'letter', 'animal', 'vehicle'],
     _shapePickerCat: null,
     _advanceTimer: null,
 
