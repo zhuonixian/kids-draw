@@ -2,3 +2,9 @@
 .kids-draw.log
 node_modules/
 .DS_Store
+.gstack/
+
+# 本地工具与生成物
+.claude/
+.wrangler/
+graphify-out/
