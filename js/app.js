@@ -1,13 +1,14 @@
 // === 应用主控 ===
 const App = {
     currentScene: 'home',
-    scenes: ['home', 'tracing', 'freecanvas'],
+    scenes: ['home', 'tracing', 'freecanvas', 'gallery', 'parent'],
     audioCtx: null,
     _lastDrawSound: 0,
     _audioUnlocked: false,
     _noiseBuffer: null,
 
     init() {
+        this.soundEnabled = (typeof Settings !== 'undefined') ? Settings.get('sound', true) : true;
         this.preventGestures();
         this.bindAudioUnlock();
         this.bindHomeButtons();
@@ -30,7 +31,26 @@ const App = {
             if (typeof Tracing !== 'undefined') Tracing.onEnter();
         } else if (name === 'freecanvas') {
             if (typeof FreeCanvas !== 'undefined') FreeCanvas.onEnter();
+        } else if (name === 'gallery') {
+            if (typeof Gallery !== 'undefined') Gallery.onEnter();
+        } else if (name === 'parent') {
+            if (typeof ParentZone !== 'undefined') ParentZone.onEnter();
         }
+    },
+
+    // 全局轻提示
+    showToast(msg, duration = 1800) {
+        let t = document.getElementById('toast');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'toast';
+            t.className = 'toast';
+            document.body.appendChild(t);
+        }
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => t.classList.remove('show'), duration);
     },
 
     bindAudioUnlock() {
@@ -46,6 +66,9 @@ const App = {
         });
         document.getElementById('btn-freecanvas').addEventListener('click', () => {
             this.showScene('freecanvas');
+        });
+        document.getElementById('btn-gallery').addEventListener('click', () => {
+            this.showScene('gallery');
         });
     },
 
@@ -105,6 +128,7 @@ const App = {
 
     // 播放鼓励音效
     playCelebrateSound() {
+        if (!this.soundEnabled) return;
         try {
             const ctx = this._getAudioCtx();
             const notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
@@ -150,6 +174,7 @@ const App = {
     },
 
     _tone(freq, duration = 0.08, type = 'sine', volume = 0.12, delay = 0) {
+        if (!this.soundEnabled) return;
         try {
             const ctx = this._getAudioCtx();
             const osc = ctx.createOscillator();
@@ -168,6 +193,7 @@ const App = {
     },
 
     _noise(duration = 0.055, volume = 0.12) {
+        if (!this.soundEnabled) return;
         try {
             const ctx = this._getAudioCtx();
             if (!this._noiseBuffer || this._noiseBuffer.sampleRate !== ctx.sampleRate) {
@@ -219,6 +245,12 @@ const App = {
         this._tone(659, 0.08, 'sine', 0.09, 0.04);
     },
 
+    // 鼓励音效：轻快的上行双音
+    playEncourageSound() {
+        this._tone(659, 0.09, 'sine', 0.10);
+        this._tone(880, 0.12, 'sine', 0.10, 0.09);
+    },
+
     // 庆祝动画（撒花/星星）
     celebrate() {
         this.playCelebrateSound();
@@ -265,25 +297,66 @@ const COLORS = [
     { name: '黑', hex: '#2D3436' }
 ];
 
-// 创建颜色选择器
+// 颜色选择器：工具栏只放一个当前色圆钮，点击弹出环形色盘
+let _colorWheel = null;
+
 function createColorPicker(containerId, onSelect) {
     const container = document.getElementById(containerId);
-    COLORS.forEach((color, i) => {
-        const dot = document.createElement('div');
-        dot.className = 'color-dot' + (i === 0 ? ' active' : '');
-        dot.style.backgroundColor = color.hex;
-        dot.dataset.color = color.hex;
-        // 白色和浅色加边框
-        if (color.hex === '#FFFFFF' || color.hex === '#FFE066' || color.hex === '#FFF8E7') {
-            dot.style.borderColor = 'rgba(0,0,0,0.18)';
-        }
-        dot.addEventListener('click', () => {
-            container.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
-            dot.classList.add('active');
-            if (onSelect) onSelect(color.hex);
+    container.innerHTML = '';
+
+    const swatch = document.createElement('button');
+    swatch.type = 'button';
+    swatch.className = 'color-swatch';
+    swatch.setAttribute('aria-label', '选择颜色');
+    swatch.dataset.color = COLORS[0].hex;
+    swatch.style.setProperty('--swatch-color', COLORS[0].hex);
+    swatch.addEventListener('click', () => {
+        openColorWheel(swatch.dataset.color, (hex) => {
+            swatch.dataset.color = hex;
+            swatch.style.setProperty('--swatch-color', hex);
+            if (onSelect) onSelect(hex);
         });
-        container.appendChild(dot);
     });
+    container.appendChild(swatch);
+}
+
+function openColorWheel(activeHex, onPick) {
+    if (!_colorWheel) {
+        _colorWheel = document.createElement('div');
+        _colorWheel.className = 'color-wheel';
+        _colorWheel.innerHTML = '<div class="color-wheel-backdrop"></div><div class="color-wheel-panel"><div class="color-wheel-center"></div></div>';
+        _colorWheel.querySelector('.color-wheel-backdrop').addEventListener('click', closeColorWheel);
+        document.body.appendChild(_colorWheel);
+    }
+    const panel = _colorWheel.querySelector('.color-wheel-panel');
+    panel.querySelectorAll('.color-dot').forEach(d => d.remove());
+
+    // 21 色沿圆环排布，逐个延迟弹出
+    const R = 112, C = 150, DOT = 42;
+    COLORS.forEach((color, i) => {
+        const angle = (i / COLORS.length) * Math.PI * 2 - Math.PI / 2;
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'color-dot' + (color.hex === activeHex ? ' active' : '');
+        dot.setAttribute('aria-label', color.name);
+        dot.style.backgroundColor = color.hex;
+        if (color.hex === '#FFFFFF' || color.hex === '#FFE066') dot.classList.add('dot-light');
+        dot.style.left = Math.round(C + R * Math.cos(angle) - DOT / 2) + 'px';
+        dot.style.top = Math.round(C + R * Math.sin(angle) - DOT / 2) + 'px';
+        dot.style.transitionDelay = (i * 14) + 'ms';
+        dot.addEventListener('click', () => {
+            onPick(color.hex);
+            closeColorWheel();
+        });
+        panel.appendChild(dot);
+    });
+
+    _colorWheel.querySelector('.color-wheel-center').style.background = activeHex;
+    _colorWheel.classList.add('open');
+}
+
+function closeColorWheel() {
+    if (_colorWheel) _colorWheel.classList.remove('open');
 }
 
 // 启动

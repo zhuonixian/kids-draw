@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#FF6B6B">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/icons/icon-180.png">
     <title>画画乐园 - 儿童创意绘画 ✨</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -58,6 +58,23 @@
                     <div class="card-label">自由画布</div>
                     <div class="card-hint">想画什么就画什么</div>
                 </div>
+                <div class="home-card" id="btn-gallery">
+                    <div class="card-icon">
+                        <div class="icon-shape-gallery">
+                            <svg viewBox="0 0 120 120" width="90" height="90">
+                                <!-- 相框 -->
+                                <rect x="22" y="18" width="76" height="84" rx="10" fill="#FFB347" stroke="#fff" stroke-width="4"/>
+                                <rect x="32" y="28" width="56" height="64" rx="6" fill="#FFF8E7"/>
+                                <!-- 画：太阳、小山、星星 -->
+                                <circle cx="72" cy="42" r="9" fill="#FF6B6B"/>
+                                <path d="M32 84 Q46 60 60 78 Q70 90 88 74 L88 86 A6 6 0 0 1 82 92 H38 A6 6 0 0 1 32 86 Z" fill="#6BCB77"/>
+                                <path d="M44 40 L46.6 45.4 L52.5 46.2 L48.2 50.3 L49.3 56.2 L44 53.3 L38.7 56.2 L39.8 50.3 L35.5 46.2 L41.4 45.4 Z" fill="#FFD93D"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="card-label">我的作品</div>
+                    <div class="card-hint">看看画了什么</div>
+                </div>
             </div>
         </div>
         <!-- 装饰性浮动元素 -->
@@ -69,19 +86,43 @@
             <div class="float-shape shape-5">🎈</div>
             <div class="float-shape shape-6">🌻</div>
         </div>
+        <!-- 家长中心入口（长按进入） -->
+        <button class="parent-entry" id="btn-parent" title="家长中心" aria-label="家长中心">
+            <svg viewBox="0 0 24 24" width="22" height="22"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.09a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.09a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></g></svg>
+        </button>
     </div>
 
     <!-- 描边填色场景 -->
     <div id="tracing" class="scene">
         <div class="scene-header tracing-header">
-            <button class="btn-back btn-icon" id="tracing-back" data-action="back">
+            <button class="btn-back btn-icon" id="tracing-back" data-action="back" aria-label="返回首页">
                 <svg viewBox="0 0 24 24" width="24" height="24"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
-            <div class="tracing-info" id="tracing-info">圆形</div>
+            <button class="tracing-shape-btn" id="tracing-shape-btn" title="选择形状" aria-label="选择形状">
+                <span class="tracing-info" id="tracing-info">圆形</span>
+                <svg viewBox="0 0 24 24" width="14" height="14"><path d="M7 10 L12 15 L17 10" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="header-spacer" aria-hidden="true"></div>
         </div>
         <canvas id="tracing-canvas"></canvas>
         <div class="tracing-toolbar" id="tracing-toolbar">
             <div class="color-picker" id="tracing-colors"></div>
+        </div>
+        <!-- 形状图鉴选择弹层（动态渲染） -->
+        <div class="picker-panel" id="shape-picker">
+            <div class="picker-backdrop" data-close></div>
+            <div class="picker-sheet">
+                <div class="picker-handle"></div>
+                <div class="picker-header">
+                    <span class="picker-title">形状图鉴</span>
+                    <span class="picker-count" id="shape-picker-count">已收集 0/9</span>
+                    <button class="picker-close" data-close title="返回" aria-label="返回">
+                        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+                <div class="picker-tabs" id="shape-picker-tabs"></div>
+                <div class="picker-grid picker-grid-shapes" id="shape-picker-grid"></div>
+            </div>
         </div>
     </div>
 
@@ -91,51 +132,137 @@
         <div class="fc-toolbar">
             <!-- 工具 -->
             <div class="tool-group">
-                <button class="tool-btn" data-tool="brush" title="画笔">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 21l1.5-4.5L17 4l3 3L7.5 19.5z" fill="currentColor"/></svg>
+                <button class="tool-btn" data-tool="brush" title="画笔" aria-label="画笔">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <g transform="rotate(45 12 12)">
+                            <rect x="9" y="2.5" width="6" height="12.5" rx="2" fill="#FF6B6B"/>
+                            <rect x="9" y="5.5" width="6" height="2.2" fill="#FFD93D"/>
+                            <path d="M9 15 L12 21.5 L15 15 Z" fill="#F5CBA7"/>
+                            <path d="M10.9 19 L12 21.5 L13.1 19 Z" fill="#5D4037"/>
+                        </g>
+                    </svg>
                 </button>
-                <button class="tool-btn" data-tool="brush" data-type="eraser" title="橡皮擦">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M16 4L4 16l4 4h4l8-8-4-4zM8 20H4l4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <button class="tool-btn" data-tool="brush" data-type="eraser" title="橡皮擦" aria-label="橡皮擦">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <g transform="rotate(-18 12 12)">
+                            <rect x="4.5" y="8.5" width="15" height="9" rx="3" fill="#74B9FF"/>
+                            <rect x="4.5" y="12" width="15" height="5.5" rx="2.7" fill="#FD79A8"/>
+                        </g>
+                        <path d="M19.2 4.2 L20.4 6.6 M21.2 6.9 L18.8 8.1" stroke="#FFD93D" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
                 </button>
-                <button class="tool-btn" data-tool="shape" title="图形">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><polygon points="12,3 22,21 2,21" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                <button class="tool-btn" data-tool="shape" title="图形" aria-label="图形">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <circle cx="8.5" cy="8.5" r="4.6" fill="#74B9FF" stroke="#FFFBF0" stroke-width="1.4"/>
+                        <rect x="11.5" y="11" width="8.4" height="8.4" rx="2.2" fill="#FFD93D" stroke="#FFFBF0" stroke-width="1.4"/>
+                        <polygon points="6.8,12.6 11.4,20.6 2.2,20.6" fill="#6BCB77" stroke="#FFFBF0" stroke-width="1.4" stroke-linejoin="round"/>
+                    </svg>
                 </button>
-                <button class="tool-btn active" data-tool="sticker" title="贴纸">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.9z" fill="currentColor"/></svg>
+                <button class="tool-btn active" data-tool="sticker" title="贴纸" aria-label="贴纸">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path d="M12 2.6 L14.6 8.2 L20.8 9 L16.3 13.3 L17.5 19.5 L12 16.5 L6.5 19.5 L7.7 13.3 L3.2 9 L9.4 8.2 Z" fill="#FFD93D" stroke="#F4B942" stroke-width="1.2" stroke-linejoin="round"/>
+                        <circle cx="9.9" cy="10.8" r="0.9" fill="#5D4037"/>
+                        <circle cx="14.1" cy="10.8" r="0.9" fill="#5D4037"/>
+                        <path d="M10.1 12.7 Q12 14.4 13.9 12.7" stroke="#5D4037" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+                        <circle cx="8.5" cy="12.4" r="0.8" fill="#FD79A8" opacity="0.6"/>
+                        <circle cx="15.5" cy="12.4" r="0.8" fill="#FD79A8" opacity="0.6"/>
+                    </svg>
                 </button>
-                <button class="tool-btn" data-tool="fill" title="填充">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M16 4l-9 9 5 5 9-9-5-5zM2 22l4-1-3-3-1 4z" fill="currentColor"/></svg>
+                <button class="tool-btn" data-tool="fill" title="填充" aria-label="填充">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path d="M4.5 7.5 H15.5 L14.3 18.6 A2.6 2.6 0 0 1 11.7 21 H8.3 A2.6 2.6 0 0 1 5.7 18.6 Z" fill="#A29BFE"/>
+                        <path d="M4.5 7.5 H15.5 L15.1 11 H4.9 Z" fill="#8977E8"/>
+                        <path d="M15.5 7.5 Q18.8 6.2 20 9" stroke="#8977E8" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+                        <path d="M18.4 12.3 Q21 15 19.7 17 A2.4 2.4 0 0 1 15.5 15.6 Q15.8 13.4 18.4 12.3 Z" fill="#FF6B6B"/>
+                    </svg>
                 </button>
-                <button class="tool-btn" data-tool="pan" title="拖动画布">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <button class="tool-btn" data-tool="pan" title="拖动画布" aria-label="拖动画布">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <g stroke="#74B9FF" stroke-width="2.3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2.8 V21.2 M2.8 12 H21.2"/>
+                            <path d="M9.2 5.6 L12 2.8 L14.8 5.6 M9.2 18.4 L12 21.2 L14.8 18.4 M5.6 9.2 L2.8 12 L5.6 14.8 M18.4 9.2 L21.2 12 L18.4 14.8"/>
+                        </g>
+                    </svg>
                 </button>
             </div>
             <div class="toolbar-divider"></div>
             <!-- 画笔类型 -->
             <div class="brush-type-group">
-                <button class="brush-type-btn active" data-type="crayon" title="彩笔">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 21l1.5-4.5L17 4l3 3L7.5 19.5z" fill="currentColor"/></svg>
+                <button class="brush-type-btn active" data-type="crayon" title="彩笔" aria-label="彩笔">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <g transform="rotate(40 12 12)">
+                            <rect x="9.3" y="3" width="5.4" height="12" rx="1.8" fill="#FF6B6B"/>
+                            <rect x="9.3" y="6.2" width="5.4" height="2" fill="#FFE066"/>
+                            <path d="M9.3 15 Q12 19 14.7 15 Z" fill="#E2574C"/>
+                        </g>
+                    </svg>
                 </button>
-                <button class="brush-type-btn" data-type="marker" title="马克笔">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><rect x="5" y="3" width="14" height="7" rx="2" fill="currentColor" opacity="0.5"/><rect x="5" y="10" width="14" height="11" rx="1" fill="currentColor"/></svg>
+                <button class="brush-type-btn" data-type="marker" title="马克笔" aria-label="马克笔">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <g transform="rotate(18 12 12)">
+                            <rect x="8" y="3.5" width="8" height="13" rx="2" fill="#0984E3"/>
+                            <rect x="8" y="3.5" width="8" height="3.2" rx="1.6" fill="#74B9FF"/>
+                            <path d="M9.9 16.5 H14.1 L13.3 20.2 A1.4 1.4 0 0 1 10.7 20.2 Z" fill="#5D4037"/>
+                        </g>
+                    </svg>
                 </button>
-                <button class="brush-type-btn" data-type="brush" title="毛笔">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2c-1 4-3 8-5 12-1 2 0 5 2 7h6c2-2 3-5 2-7-2-4-4-8-5-12z" fill="currentColor"/></svg>
+                <button class="brush-type-btn" data-type="brush" title="毛笔" aria-label="毛笔">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <rect x="10.7" y="2" width="2.6" height="10.5" rx="1.3" fill="#C08552"/>
+                        <rect x="10" y="12" width="4" height="2.2" rx="1.1" fill="#8D6E63"/>
+                        <path d="M9.2 14.2 Q12 13.2 14.8 14.2 Q14.3 18.6 12 21.6 Q9.7 18.6 9.2 14.2 Z" fill="#3E2723"/>
+                        <circle cx="17.3" cy="19.8" r="1.3" fill="#5D4037" opacity="0.75"/>
+                    </svg>
                 </button>
-                <button class="brush-type-btn" data-type="highlighter" title="荧光笔">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><rect x="3" y="8" width="18" height="8" rx="2" fill="currentColor" opacity="0.4"/><rect x="5" y="6" width="14" height="4" rx="1" fill="currentColor" opacity="0.7"/></svg>
+                <button class="brush-type-btn" data-type="highlighter" title="荧光笔" aria-label="荧光笔">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <g transform="rotate(-32 12 12)">
+                            <rect x="9" y="2.5" width="6" height="11.5" rx="2" fill="#00B894"/>
+                            <rect x="9" y="2.5" width="6" height="3" rx="1.5" fill="#55EFC4"/>
+                            <path d="M9.5 14 H14.5 L16.2 18.6 Q12 20.4 7.8 18.6 Z" fill="#FFE066" stroke="#F4CF5A" stroke-width="0.8"/>
+                        </g>
+                    </svg>
                 </button>
-                <button class="brush-type-btn" data-type="rainbow" title="彩虹笔">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 12 A9 9 0 0 1 21 12" fill="none" stroke="#FF6B6B" stroke-width="2"/><path d="M5 12 A7 7 0 0 1 19 12" fill="none" stroke="#FFB347" stroke-width="2"/><path d="M7 12 A5 5 0 0 1 17 12" fill="none" stroke="#6BCB77" stroke-width="2"/><path d="M9 12 A3 3 0 0 1 15 12" fill="none" stroke="#74B9FF" stroke-width="2"/></svg>
+                <button class="brush-type-btn" data-type="rainbow" title="彩虹笔" aria-label="彩虹笔">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <g fill="none" stroke-linecap="round">
+                            <path d="M4 17.5 A8 8 0 0 1 20 17.5" stroke="#FF6B6B" stroke-width="2.4"/>
+                            <path d="M6.8 17.5 A5.2 5.2 0 0 1 17.2 17.5" stroke="#FFB347" stroke-width="2.4"/>
+                            <path d="M9.6 17.5 A2.4 2.4 0 0 1 14.4 17.5" stroke="#6BCB77" stroke-width="2.4"/>
+                        </g>
+                        <circle cx="3.4" cy="18.4" r="1.7" fill="#74B9FF"/>
+                        <circle cx="20.6" cy="18.4" r="1.7" fill="#FD79A8"/>
+                    </svg>
                 </button>
-                <button class="brush-type-btn" data-type="spray" title="喷雾">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="8" cy="6" r="1" fill="currentColor"/><circle cx="12" cy="4" r="1" fill="currentColor"/><circle cx="16" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="10" r="1.2" fill="currentColor"/><circle cx="10" cy="9" r="1" fill="currentColor"/><circle cx="14" cy="8" r="1" fill="currentColor"/><circle cx="18" cy="10" r="1.2" fill="currentColor"/><circle cx="8" cy="14" r="1" fill="currentColor"/><circle cx="12" cy="13" r="1.2" fill="currentColor"/><circle cx="16" cy="14" r="1" fill="currentColor"/><circle cx="10" cy="17" r="1" fill="currentColor"/><circle cx="14" cy="17" r="1" fill="currentColor"/></svg>
+                <button class="brush-type-btn" data-type="spray" title="喷雾" aria-label="喷雾">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <rect x="6.5" y="8.5" width="7" height="12" rx="2.2" fill="#74B9FF"/>
+                        <rect x="8" y="5" width="4" height="3.5" rx="1" fill="#5D4037"/>
+                        <rect x="8.8" y="2.6" width="2.4" height="2.4" rx="0.9" fill="#FD79A8"/>
+                        <circle cx="16.8" cy="7.5" r="1.1" fill="#FF6B6B"/>
+                        <circle cx="19.4" cy="10.4" r="1.3" fill="#6BCB77"/>
+                        <circle cx="17.6" cy="13.4" r="1" fill="#FFB347"/>
+                        <circle cx="20.4" cy="15.6" r="0.9" fill="#A29BFE"/>
+                    </svg>
                 </button>
-                <button class="brush-type-btn" data-type="glow" title="发光笔">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="6" fill="currentColor" opacity="0.3"/><circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.7"/><circle cx="12" cy="12" r="1.5" fill="#fff"/></svg>
+                <button class="brush-type-btn" data-type="glow" title="发光笔" aria-label="发光笔">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <circle cx="16.8" cy="7.4" r="3.6" fill="#FFF3B0" opacity="0.55"/>
+                        <path d="M16.8 3 L17.9 6.3 L21.2 7.4 L17.9 8.5 L16.8 11.8 L15.7 8.5 L12.4 7.4 L15.7 6.3 Z" fill="#FFD93D"/>
+                        <rect x="3.2" y="15.4" width="10.5" height="2.6" rx="1.3" transform="rotate(-45 8.5 16.7)" fill="#C08552"/>
+                        <circle cx="21.2" cy="12.8" r="0.9" fill="#FFE066"/>
+                        <circle cx="12.4" cy="12.4" r="0.7" fill="#FFE066"/>
+                    </svg>
                 </button>
-                <button class="brush-type-btn" data-type="dotted" title="虚线笔">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="4" cy="12" r="2" fill="currentColor"/><circle cx="10" cy="12" r="2" fill="currentColor"/><circle cx="16" cy="12" r="2" fill="currentColor"/><circle cx="22" cy="12" r="2" fill="currentColor"/></svg>
+                <button class="brush-type-btn" data-type="dotted" title="虚线笔" aria-label="虚线笔">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <g fill="none" stroke-linecap="round" stroke-width="2.6" stroke-dasharray="0.5 4.6">
+                            <path d="M3 18 Q8 7.5 13 12.5 T21 6.5" stroke="#FF6B6B"/>
+                        </g>
+                        <g fill="none" stroke-linecap="round" stroke-width="2.6" stroke-dasharray="0.5 4.6" stroke-dashoffset="-2.4">
+                            <path d="M3 18 Q8 7.5 13 12.5 T21 6.5" stroke="#A29BFE"/>
+                        </g>
+                    </svg>
                 </button>
             </div>
             <div class="toolbar-divider"></div>
@@ -151,43 +278,144 @@
             <!-- 颜色 -->
             <div class="color-picker" id="freecanvas-colors"></div>
             <div class="toolbar-divider"></div>
-            <!-- 图形分类tab -->
-            <div class="shape-cat-group">
-                <button class="shape-cat-btn active" data-cat="friends">伙伴</button>
-                <button class="shape-cat-btn" data-cat="chickteam">小鸡一家</button>
-                <button class="shape-cat-btn" data-cat="magic">童话</button>
-                <button class="shape-cat-btn" data-cat="toys">玩具</button>
-                <button class="shape-cat-btn" data-cat="snacks">甜点</button>
-                <button class="shape-cat-btn" data-cat="ocean">海洋</button>
-                <button class="shape-cat-btn" data-cat="dino">恐龙</button>
-                <button class="shape-cat-btn" data-cat="space">太空</button>
-                <button class="shape-cat-btn" data-cat="music">音乐</button>
-                <button class="shape-cat-btn" data-cat="fruits">水果</button>
-                <button class="shape-cat-btn" data-cat="weather">天气</button>
-                <button class="shape-cat-btn" data-cat="sports">运动</button>
-                <button class="shape-cat-btn" data-cat="holiday">节日</button>
-            </div>
-            <!-- 贴纸选择（动态渲染） -->
-            <div class="shape-group" id="shape-buttons"></div>
-            <!-- 图形大小 -->
-            <div class="shape-size-group">
-                <button class="shape-size-btn" data-size="25">小</button>
-                <button class="shape-size-btn active" data-size="45">中</button>
-                <button class="shape-size-btn" data-size="75">大</button>
-            </div>
-            <div class="toolbar-divider"></div>
             <!-- 底色 -->
             <div class="bg-group" id="bg-colors"></div>
             <div class="toolbar-divider"></div>
             <!-- 功能 -->
             <div class="action-tools">
-                <button class="btn-action btn-clear" data-action="clear" title="清除">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 6h18M8 6V4h8v2M5 6v14a2 2 0 002 2h10a2 2 0 002-2V6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+                <button class="btn-action" id="fc-undo" title="撤销" aria-label="撤销" disabled>
+                    <svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 5 L3 10 L8 15 M3 10 H13.5 A5.5 5.5 0 0 1 13.5 21 H10" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
-                <button class="btn-action btn-back" data-action="back" title="返回">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <button class="btn-action" id="fc-save" title="保存作品" aria-label="保存作品">
+                    <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 3 V15 M7.5 10.5 L12 15 L16.5 10.5" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17 V18.5 A1.5 1.5 0 0 0 5.5 20 H18.5 A1.5 1.5 0 0 0 20 18.5 V17" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>
+                </button>
+                <button class="btn-action btn-clear" data-action="clear" title="清除" aria-label="清除">
+                    <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M8 6V4h8v2M5 6v14a2 2 0 002 2h10a2 2 0 002-2V6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+                </button>
+                <button class="btn-action btn-back" data-action="back" title="返回" aria-label="返回">
+                    <svg viewBox="0 0 24 24" width="22" height="22"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
             </div>
+        </div>
+
+        <!-- 贴纸选择弹层（动态渲染） -->
+        <div class="picker-panel" id="sticker-panel">
+            <div class="picker-backdrop" data-close></div>
+            <div class="picker-sheet">
+                <div class="picker-handle"></div>
+                <div class="picker-header">
+                    <span class="picker-title">选一个贴纸</span>
+                    <button class="picker-close" data-close title="返回画布" aria-label="返回画布">
+                        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+                <div class="picker-tabs" id="sticker-tabs"></div>
+                <div class="picker-grid" id="sticker-grid"></div>
+                <div class="picker-footer">
+                    <span class="picker-label">大小</span>
+                    <div class="picker-sizes" id="sticker-sizes">
+                        <button class="picker-size-btn" data-size="25">小</button>
+                        <button class="picker-size-btn active" data-size="45">中</button>
+                        <button class="picker-size-btn" data-size="75">大</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 图形选择弹层（动态渲染） -->
+        <div class="picker-panel" id="shape-panel">
+            <div class="picker-backdrop" data-close></div>
+            <div class="picker-sheet">
+                <div class="picker-handle"></div>
+                <div class="picker-header">
+                    <span class="picker-title">选一个图形</span>
+                    <button class="picker-close" data-close title="返回画布" aria-label="返回画布">
+                        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+                <div class="picker-tabs" id="shape-tabs"></div>
+                <div class="picker-grid" id="shape-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 我的作品场景 -->
+    <div id="gallery" class="scene">
+        <div class="scene-header gallery-header">
+            <button class="btn-back btn-icon" id="gallery-back" data-action="back">
+                <svg viewBox="0 0 24 24" width="24" height="24"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="tracing-info">我的作品</div>
+        </div>
+        <div class="gallery-body">
+            <div class="gallery-grid" id="gallery-grid"></div>
+            <div class="gallery-empty" id="gallery-empty">
+                <div class="gallery-empty-icon">🎨</div>
+                还没有作品，去画一幅吧！
+            </div>
+        </div>
+        <!-- 作品预览 -->
+        <div class="picker-panel" id="gallery-lightbox">
+            <div class="picker-backdrop" data-close></div>
+            <div class="lightbox-body">
+                <img id="lightbox-img" alt="作品预览">
+                <div class="lightbox-actions">
+                    <button class="picker-action" id="lightbox-download">保存到设备</button>
+                    <button class="picker-action danger" id="lightbox-delete">删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 家长中心场景 -->
+    <div id="parent" class="scene">
+        <div class="scene-header gallery-header">
+            <button class="btn-back btn-icon" id="parent-back" data-action="back" aria-label="返回首页">
+                <svg viewBox="0 0 24 24" width="24" height="24"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="tracing-info">家长中心</div>
+        </div>
+        <div class="parent-body">
+            <div class="parent-gate" id="parent-gate">
+                <div class="parent-gate-tip">请家长回答，才能进入</div>
+                <div class="parent-gate-q" id="parent-gate-q">3 + 4 = ?</div>
+                <div class="parent-gate-input" id="parent-gate-input">&nbsp;</div>
+                <div class="parent-gate-keys" id="parent-gate-keys"></div>
+            </div>
+            <div class="parent-panel" id="parent-panel" hidden>
+                <div class="parent-row">
+                    <div class="parent-row-text">
+                        <b>音效</b>
+                        <span>关闭后，绘画与庆祝将没有声音</span>
+                    </div>
+                    <button class="parent-toggle" id="parent-sound" role="switch" aria-checked="true" aria-label="音效开关"><span class="parent-toggle-knob"></span></button>
+                </div>
+                <div class="parent-row">
+                    <div class="parent-row-text">
+                        <b>护眼提醒</b>
+                        <span>连续玩耍 20 分钟后，提醒孩子休息</span>
+                    </div>
+                    <button class="parent-toggle" id="parent-rest" role="switch" aria-checked="true" aria-label="护眼提醒开关"><span class="parent-toggle-knob"></span></button>
+                </div>
+                <div class="parent-actions">
+                    <button class="picker-action danger" id="parent-clear-gallery">清空作品集</button>
+                    <button class="picker-action danger" id="parent-reset-progress">重置收集进度</button>
+                </div>
+                <div class="parent-about">
+                    <b>画画乐园 · v2.0</b>
+                    <span>纯本地运行 · 无广告 · 无外链 · 不收集任何数据</span>
+                    <span>描边填色 / 自由画布 / 我的作品 · 适合 3-8 岁小朋友</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 护眼休息提醒 -->
+    <div id="rest-overlay" class="rest-overlay" aria-hidden="true">
+        <div class="rest-card">
+            <div class="rest-emoji">🌿</div>
+            <div class="rest-title">休息一下眼睛吧</div>
+            <div class="rest-count" id="rest-countdown">20</div>
+            <div class="rest-tip">看看远处，眨眨眼睛</div>
         </div>
     </div>
 
@@ -196,8 +424,17 @@
 
     <script src="js/shapes.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/store.js"></script>
     <script src="js/stickers.js"></script>
     <script src="js/tracing.js"></script>
     <script src="js/freecanvas.js"></script>
+    <script src="js/gallery.js"></script>
+    <script src="js/parent.js"></script>
+    <script>
+        // PWA：Service Worker 注册（file:// 协议下静默跳过）
+        if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+    </script>
 </body>
 </html>
