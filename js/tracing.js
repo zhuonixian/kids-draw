@@ -243,15 +243,17 @@ const Tracing = {
                     }
                 }
                 if (runStart !== null) {
-                    // 末尾连续段：若首点也被覆盖则沿闭环补齐
-                    const wrap = covered[0] && runStart > 0;
+                    // 末尾连续段：若首点也覆盖则沿闭环连接，但只连"连续覆盖的前缀"，
+                    // 不能画到 runStart（否则两次分散点击就会把整圈渲染成绿色）
                     ctx.beginPath();
                     for (let j = runStart; j < cnt; j++) {
                         const p = this.pathPoints[start + j];
                         j === runStart ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
                     }
-                    if (wrap) {
-                        for (let j = 0; j <= runStart; j++) {
+                    if (covered[0] && runStart > 0) {
+                        let k = 0;
+                        while (k < runStart && covered[k]) k++;
+                        for (let j = 0; j < k; j++) {
                             const p = this.pathPoints[start + j];
                             ctx.lineTo(p.x, p.y);
                         }
