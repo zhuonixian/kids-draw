@@ -1479,3 +1479,10 @@ html, body {
     width: 68px;
     height: 68px;
 }
+
+.picker-shape-level {
+    margin-left: 4px;
+    color: #F4B942;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+}

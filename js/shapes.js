@@ -434,8 +434,8 @@ const Shapes = [
             ctx.lineTo(cx - s * 0.6, wheelY);
             ctx.closePath();
         },
-        isInside() { return false; },
-        usePixelHitTest: true
+        // 轮廓含圆弧，描边填色命中由 hitMap 覆盖，无需 isInside
+        isInside() { return false; }
     }
 ];
 

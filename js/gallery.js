@@ -20,6 +20,22 @@ const Gallery = {
         const backdrop = this.lightbox.querySelector('[data-close]');
         if (backdrop) backdrop.addEventListener('click', () => this._closeLightbox());
 
+        document.getElementById('lightbox-share').addEventListener('click', () => {
+            // Web Share API：iPad/手机原生分享面板；文件分享优先，不支持则退化为文本
+            const record = ArtworkStore.list().find(r => r.id === this._currentId);
+            if (!record) return;
+            if (!navigator.share) { App.showToast('当前设备不支持分享'); return; }
+            fetch(record.dataUrl).then(r => r.blob()).then(blob => {
+                const file = new File([blob], record.name + '.jpg', { type: 'image/jpeg' });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    return navigator.share({ files: [file], title: '画画乐园', text: record.name });
+                }
+                return navigator.share({ title: '画画乐园', text: '看我的作品：' + record.name });
+            }).then(() => App.showToast('已分享')).catch((err) => {
+                if (!err || err.name !== 'AbortError') App.showToast('当前设备不支持分享');
+            });
+        });
+
         document.getElementById('lightbox-download').addEventListener('click', () => {
             // 现查现用：记录可能已被并发删除
             const record = ArtworkStore.list().find(r => r.id === this._currentId);

@@ -1,6 +1,8 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
+const crypto = require('crypto');
 
 const PORT = 3000;
 
@@ -11,11 +13,17 @@ const MIME_TYPES = {
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
     '.svg': 'image/svg+xml',
-    '.ico': 'image/x-icon'
+    '.ico': 'image/x-icon',
+    '.json': 'application/json; charset=utf-8',
+    '.webmanifest': 'application/manifest+json',
+    '.woff2': 'font/woff2'
 };
 
+// 压缩收益高的文本类型
+const GZIP_TYPES = new Set(['.html', '.css', '.js', '.svg', '.json']);
+
 const server = http.createServer((req, res) => {
-    let filePath = req.url === '/' ? '/index.html' : req.url;
+    let filePath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
     filePath = path.join(__dirname, filePath);
 
     const resolved = path.resolve(filePath);
@@ -34,10 +42,26 @@ const server = http.createServer((req, res) => {
             res.end('Not Found');
             return;
         }
-        res.writeHead(200, {
+        // ETag 协商缓存：内容未变返回 304
+        const etag = '"' + crypto.createHash('md5').update(data).digest('hex').slice(0, 20) + '"';
+        if (req.headers['if-none-match'] === etag) {
+            res.writeHead(304, { ETag: etag });
+            res.end();
+            return;
+        }
+        const headers = {
             'Content-Type': contentType,
-            'Cache-Control': 'no-cache'
-        });
+            'Cache-Control': 'no-cache',
+            ETag: etag
+        };
+        // 文本资源按协商压缩传输
+        if (GZIP_TYPES.has(ext) && (req.headers['accept-encoding'] || '').includes('gzip')) {
+            headers['Content-Encoding'] = 'gzip';
+            res.writeHead(200, headers);
+            res.end(zlib.gzipSync(data));
+            return;
+        }
+        res.writeHead(200, headers);
         res.end(data);
     });
 });

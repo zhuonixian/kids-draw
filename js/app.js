@@ -45,6 +45,7 @@ const App = {
             t = document.createElement('div');
             t.id = 'toast';
             t.className = 'toast';
+            t.setAttribute('aria-live', 'polite');
             document.body.appendChild(t);
         }
         t.textContent = msg;

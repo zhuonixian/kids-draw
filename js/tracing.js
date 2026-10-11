@@ -1,4 +1,4 @@
-// === 描边填色模块（v6 - CSS 坐标填色 + 静态遮罩缓存）===
+// === 描边填色模块（v7 - 逐笔引导描红 + 覆盖判定）===
 const Tracing = {
     canvas: null,
     ctx: null,
@@ -170,6 +170,8 @@ const Tracing = {
         this._partCoveredCount = this._partCounts.map(() => 0);
         this._lastIdx = this._partCounts.map(() => null);
         this._partProgress = this._partCounts.map(() => 0);
+        // 逐笔引导：_strokeIdx 为当前引导的笔画下标，描完当前笔才解锁下一笔
+        this._strokeIdx = 0;
         document.getElementById('tracing-info').textContent = shape.name;
         document.getElementById('tracing-toolbar').classList.remove('visible');
         this.fillCtx.clearRect(0, 0, this.canvasW, this.canvasH);
@@ -190,93 +192,101 @@ const Tracing = {
         const shape = Shapes[this.currentShapeIndex];
         const counts = shape.partsPointCounts || [pts.length];
 
-        // 虚线轮廓（完整绘制每一笔）
-        const drawPerPart = () => {
-            let idx = 0;
-            counts.forEach(cnt => {
-                ctx.beginPath();
-                for (let i = idx; i < idx + cnt && i < pts.length; i++) {
-                    i === idx ? ctx.moveTo(pts[i].x, pts[i].y) : ctx.lineTo(pts[i].x, pts[i].y);
-                }
-                ctx.closePath();
-                ctx.stroke();
-                idx += cnt;
-            });
-        };
-
-        // 内部边界遮盖：用底色重新填充并集，多部件只留外轮廓描边
-        const maskInterior = () => {
+        // 逐笔引导三区渲染：已完成笔（绿）/ 当前笔（米色虚线+绿色覆盖）/ 未到笔（浅虚线）
+        let idx = 0;
+        counts.forEach((cnt, pIdx) => {
+            const isDone = pIdx < this._strokeIdx;
+            const isCurrent = pIdx === this._strokeIdx;
+            ctx.beginPath();
+            for (let i = idx; i < idx + cnt && i < pts.length; i++) {
+                i === idx ? ctx.moveTo(pts[i].x, pts[i].y) : ctx.lineTo(pts[i].x, pts[i].y);
+            }
+            ctx.closePath();
             ctx.save();
-            ctx.setLineDash([]);
-            ctx.fillStyle = '#fff';
-            shape.drawFillPath(ctx, this.cx, this.cy, this.size);
-            ctx.fill();
+            if (isDone) {
+                ctx.setLineDash([]);
+                ctx.lineWidth = 10;
+                ctx.strokeStyle = '#6BCB77';
+            } else if (isCurrent) {
+                ctx.setLineDash([9, 7]);
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#C9AFA5';
+            } else {
+                ctx.setLineDash([3, 9]);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#EDE3D8';
+            }
+            ctx.stroke();
             ctx.restore();
-        };
+            idx += cnt;
+        });
 
-        // 虚线轮廓
+        // 内部边界遮盖：多部件并集的内部边不显示
         ctx.save();
-        ctx.setLineDash([8, 6]); ctx.lineWidth = 4; ctx.strokeStyle = '#D5C8BE';
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        drawPerPart();
-        maskInterior();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#fff';
+        shape.drawFillPath(ctx, this.cx, this.cy, this.size);
+        ctx.fill();
         ctx.restore();
 
-        // 已描绿色（只画真实覆盖过的轨迹段，跨部件独立）
-        if (this.tracedProgress > 0) {
-            ctx.save(); ctx.setLineDash([]); ctx.lineWidth = 8; ctx.strokeStyle = '#6BCB77';
+        // 当前笔已描覆盖（绿色实线，跟随真实笔迹）
+        const curCnt = counts[this._strokeIdx];
+        const curStart = this._partOffsets[this._strokeIdx];
+        const curCovered = this._partCovered[this._strokeIdx];
+        if (this._partProgress[this._strokeIdx] > 0) {
+            ctx.save();
+            ctx.setLineDash([]);
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#6BCB77';
             ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-            this._partCounts.forEach((cnt, pIdx) => {
-                const covered = this._partCovered[pIdx];
-                const start = this._partOffsets[pIdx];
-                let runStart = null;
-                for (let i = 0; i < cnt; i++) {
-                    if (covered[i]) {
-                        if (runStart === null) runStart = i;
-                    } else if (runStart !== null) {
-                        for (let j = runStart; j < i; j++) {
-                            const p = this.pathPoints[start + j];
-                            j === runStart ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
-                        }
-                        ctx.closePath(); ctx.stroke();
-                        runStart = null;
-                    }
-                }
-                if (runStart !== null) {
-                    // 末尾连续段：若首点也覆盖则沿闭环连接，但只连"连续覆盖的前缀"，
-                    // 不能画到 runStart（否则两次分散点击就会把整圈渲染成绿色）
+            let runStart = null;
+            for (let i = 0; i < curCnt; i++) {
+                if (curCovered[i]) {
+                    if (runStart === null) runStart = i;
+                } else if (runStart !== null) {
                     ctx.beginPath();
-                    for (let j = runStart; j < cnt; j++) {
-                        const p = this.pathPoints[start + j];
+                    for (let j = runStart; j < i; j++) {
+                        const p = pts[curStart + j];
                         j === runStart ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
                     }
-                    if (covered[0] && runStart > 0) {
-                        let k = 0;
-                        while (k < runStart && covered[k]) k++;
-                        for (let j = 0; j < k; j++) {
-                            const p = this.pathPoints[start + j];
-                            ctx.lineTo(p.x, p.y);
-                        }
-                    }
-                    ctx.stroke();
+                    ctx.closePath(); ctx.stroke();
+                    runStart = null;
                 }
-            });
-            maskInterior();
+            }
+            if (runStart !== null) {
+                // 末尾连续段：若首点也覆盖则沿闭环连接（只连连续覆盖前缀）
+                const wrap = curCovered[0] && runStart > 0;
+                ctx.beginPath();
+                for (let j = runStart; j < curCnt; j++) {
+                    const p = pts[curStart + j];
+                    j === runStart ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+                }
+                if (wrap) {
+                    let k = 0;
+                    while (k <= runStart && curCovered[k]) k++;
+                    for (let j = 0; j < k; j++) {
+                        const p = pts[curStart + j];
+                        ctx.lineTo(p.x, p.y);
+                    }
+                }
+                ctx.stroke();
+            }
             ctx.restore();
         }
 
-        // 起点
-        const p = 1 + 0.1 * Math.sin(Date.now() / 300);
+        // 当前笔起点脉动
+        const dot = pts[curStart];
+        const p2 = 1 + 0.1 * Math.sin(Date.now() / 300);
         ctx.save(); ctx.fillStyle = '#FFA36C';
-        ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 12 * p, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(dot.x, dot.y, 12 * p2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(dot.x, dot.y, 5, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
 
-        // 起点脉冲只在尚未落笔时运行（提示起点），落笔后停止以省电
-        if (this.tracedProgress === 0 && !this._animRunning) {
+        // 起点脉动动画：仅当前笔尚未落笔时运行
+        if (this._partProgress[this._strokeIdx] === 0 && !this._animRunning) {
             this._animRunning = true;
             const loop = () => {
-                if (this.mode !== 'tracing' || this.tracedProgress > 0) { this._animRunning = false; return; }
+                if (this.mode !== 'tracing' || this._partProgress[this._strokeIdx] > 0) { this._animRunning = false; return; }
                 this.redraw();
                 setTimeout(() => requestAnimationFrame(loop), 80);
             };
@@ -294,52 +304,62 @@ const Tracing = {
     // === 描边 ===
     _updateProgress(x, y) {
         const TOL = 35;
-        // 全局匹配唯一最近的采样点，只标记它所在的那一笔——
-        // 相邻笔画不会因为 35px 容差被顺带覆盖
-        let bestD = Infinity, bestP = -1, bestIdx = -1;
-        this._partCounts.forEach((cnt, pIdx) => {
-            const start = this._partOffsets[pIdx];
-            for (let i = 0; i < cnt; i++) {
-                const pt = this.pathPoints[start + i];
-                const dx = pt.x - x, dy = pt.y - y;
-                const d = dx * dx + dy * dy;
-                if (d < bestD) { bestD = d; bestP = pIdx; bestIdx = i; }
-            }
-        });
-        if (bestP < 0 || Math.sqrt(bestD) > TOL) return;
-        const cnt = this._partCounts[bestP];
-        const covered = this._partCovered[bestP];
+        // 逐笔引导：只接受当前笔画上的覆盖，其他笔画的位置忽略
+        const pIdx = this._strokeIdx;
+        const cnt = this._partCounts[pIdx];
+        const start = this._partOffsets[pIdx];
+        let minD = Infinity, localIdx = -1;
+        for (let i = 0; i < cnt; i++) {
+            const pt = this.pathPoints[start + i];
+            const dx = pt.x - x, dy = pt.y - y;
+            const d = dx * dx + dy * dy;
+            if (d < minD) { minD = d; localIdx = i; }
+        }
+        if (localIdx < 0 || Math.sqrt(minD) > TOL) return;
+        const covered = this._partCovered[pIdx];
         const mark = (i) => {
             const j = ((i % cnt) + cnt) % cnt;
-            if (!covered[j]) { covered[j] = 1; this._partCoveredCount[bestP]++; }
+            if (!covered[j]) { covered[j] = 1; this._partCoveredCount[pIdx]++; }
         };
-        const last = this._lastIdx[bestP];
-        if (last === null || Math.abs(bestIdx - last) > 8) {
+        const last = this._lastIdx[pIdx];
+        if (last === null || Math.abs(localIdx - last) > 8) {
             // 新落笔或大幅跳变：只标记命中点附近，不做插值
-            mark(bestIdx - 1); mark(bestIdx); mark(bestIdx + 1);
+            mark(localIdx - 1); mark(localIdx); mark(localIdx + 1);
         } else {
             // 连续拖动：命中点之间插值补齐，快描也不会漏
-            const lo = Math.min(last, bestIdx), hi = Math.max(last, bestIdx);
+            const lo = Math.min(last, localIdx), hi = Math.max(last, localIdx);
             for (let i = lo; i <= hi; i++) mark(i);
         }
-        this._lastIdx[bestP] = bestIdx;
-        this._partProgress[bestP] = this._partCoveredCount[bestP] / cnt;
+        this._lastIdx[pIdx] = localIdx;
+        this._partProgress[pIdx] = this._partCoveredCount[pIdx] / cnt;
         let sum = 0;
         this._partCounts.forEach((c, i) => { sum += c * this._partProgress[i]; });
         this.tracedProgress = sum / this.totalSegments;
     },
 
-    _checkTracingDone() {
-        // 覆盖模型：每一笔（部件）的覆盖率都达标才算完成，缺任何一笔都不通过
-        const done = this._partProgress.length > 0 && this._partProgress.every(p => p >= 0.9);
-        if (done) {
+    // 松手：检查当前笔画覆盖率，达标解锁下一笔
+    _finishStroke() {
+        const pIdx = this._strokeIdx;
+        if (this._partProgress[pIdx] >= 0.9) {
+            this._advanceStroke();
+        } else {
+            this._encourage('把这一笔描完哦！');
+        }
+    },
+
+    _advanceStroke() {
+        this._strokeIdx++;
+        if (this._strokeIdx >= this._partCounts.length) {
+            // 全部笔画完成 → 进入填色
             this.tracedProgress = 1;
             this._partProgress = this._partCounts.map(() => 1);
-            this._animRunning = false; this.redraw();
+            this._animRunning = false;
+            this.redraw();
             this._startColoringTimer = setTimeout(() => this._startColoring(), 400);
-        } else {
-            this._encourage('再多描一点点！');
+            return;
         }
+        this._lastIdx[this._strokeIdx] = null;
+        this.redraw();
     },
 
     _startColoring() {
@@ -413,7 +433,20 @@ const Tracing = {
         if (this._getFillRate() >= 0.70) {
             // 收入图鉴（celebrate 前），失败静默不打扰孩子
             const shape = Shapes[this.currentShapeIndex];
-            if (shape && typeof ShapeProgress !== 'undefined') ShapeProgress.mark(shape.name);
+            if (shape && typeof ShapeProgress !== 'undefined') {
+                // 分类收集里程碑：本次 mark 前后对比，判断是否刚集齐
+                const cat = this._shapeCategoryOf(shape);
+                const siblings = Shapes.filter(s => this._shapeCategoryOf(s) === cat);
+                const prevDone = siblings.filter(s => ShapeProgress.list()[s.name]).length;
+                ShapeProgress.mark(shape.name);
+                const nowDone = siblings.filter(s => ShapeProgress.list()[s.name]).length;
+                if (siblings.length > 1 && prevDone === siblings.length - 1 && nowDone === siblings.length) {
+                    setTimeout(() => {
+                        App.showToast('🏆 集齐「' + (this._SHAPE_CATS[cat] || cat) + '」全部 ' + siblings.length + ' 个！');
+                        if (App.playCelebrateSound) App.playCelebrateSound();
+                    }, 3400);
+                }
+            }
             this._saveArtwork();
             this.mode = 'complete';
             App.celebrate();
@@ -484,6 +517,55 @@ const Tracing = {
     },
 
     // 渲染 tabs + 当前分类 grid + 收集计数（每次打开/切换 tab 都重渲，直接反映最新 Shapes/进度）
+    // 打印本分类涂色页：离屏 iframe 排版 A4 网格，调起系统打印
+    _printCategory() {
+        const cat = this._shapePickerCat;
+        const shapes = Shapes.filter(s => this._shapeCategoryOf(s) === cat);
+        if (!shapes.length) return;
+        const label = this._SHAPE_CATS[cat] || cat;
+
+        const cells = shapes.map(shape => {
+            const cv = document.createElement('canvas');
+            cv.width = 640; cv.height = 640;
+            const c = cv.getContext('2d');
+            c.lineJoin = 'round'; c.lineCap = 'round';
+            shape.drawFillPath(c, 320, 320, 560);
+            c.fillStyle = '#fff'; c.fill();
+            c.lineWidth = 4; c.strokeStyle = '#444'; c.stroke();
+            const stars = '★'.repeat(Math.max(1, Math.min(3, shape.level || 1)));
+            return { url: cv.toDataURL('image/png'), name: shape.name, stars: stars };
+        });
+
+        const frame = document.createElement('iframe');
+        frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+        document.body.appendChild(frame);
+        const doc = frame.contentDocument;
+        doc.open();
+        doc.write('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>画画乐园涂色页 - ' + label + '</title>' +
+            '<style>' +
+            '@page { size: A4; margin: 10mm; }' +
+            "body { font-family: sans-serif; color: #444; }" +
+            'h1 { font-size: 18px; text-align: center; margin: 0 0 6mm; }' +
+            '.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }' +
+            '.cell { border: 2px dashed #bbb; border-radius: 12px; padding: 4mm; text-align: center; page-break-inside: avoid; }' +
+            '.cell img { width: 100%; }' +
+            '.cell p { margin: 2mm 0 0; font-size: 13px; color: #888; }' +
+            '</style></head><body>' +
+            '<h1>画画乐园 · ' + label + ' 涂色页</h1>' +
+            '<div class="grid">' +
+            cells.map(c2 => '<div class="cell"><img src="' + c2.url + '"><p>' + c2.name + ' ' + c2.stars + '</p></div>').join('') +
+            '</div></body></html>');
+        doc.close();
+        App.showToast('已生成涂色页，选择打印机打印');
+        const doPrint = () => {
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+            setTimeout(() => frame.remove(), 2000);
+        };
+        if (doc.readyState === 'complete') doPrint();
+        else frame.onload = doPrint;
+    },
+
     _renderShapePicker() {
         const countEl = document.getElementById('shape-picker-count');
         const tabsEl = document.getElementById('shape-picker-tabs');
@@ -521,7 +603,10 @@ const Tracing = {
         });
 
         gridEl.innerHTML = '';
-        (groups[this._shapePickerCat] || []).forEach(idx => {
+        const items = (groups[this._shapePickerCat] || [])
+            .slice()
+            .sort((a, b) => (Shapes[a].level || 1) - (Shapes[b].level || 1));
+        items.forEach(idx => {
             const shape = Shapes[idx];
             const item = document.createElement('button');
             item.className = 'picker-item';
@@ -556,6 +641,9 @@ const Tracing = {
             const label = document.createElement('span');
             label.className = 'picker-shape-name';
             label.textContent = shape.name;
+            const level = document.createElement('span');
+            level.className = 'picker-shape-level';
+            level.textContent = '★'.repeat(Math.max(1, Math.min(3, shape.level || 1)));
 
             if (iconUrl) {
                 const icon = document.createElement('img');
@@ -565,6 +653,7 @@ const Tracing = {
             }
             item.setAttribute('aria-label', shape.name);
             item.appendChild(label);
+            item.appendChild(level);
             if (progress[shape.name]) {
                 const badge = document.createElement('span');
                 badge.className = 'picker-shape-badge';
@@ -605,6 +694,8 @@ const Tracing = {
         document.querySelectorAll('#shape-picker [data-close]').forEach(el => {
             el.addEventListener('click', () => this._closeShapePicker());
         });
+        const printBtn = document.getElementById('shape-picker-print');
+        if (printBtn) printBtn.addEventListener('click', () => this._printCategory());
     },
 
     _pos(e) {
@@ -616,21 +707,25 @@ const Tracing = {
     _onStart(p) {
         this._isDrawing = true;
         if (this.mode === 'tracing') {
-            // 每次落笔重置插值链：插值只允许发生在一次连续拖动内部，
-            // 否则分散的两次点击会被连线"铺"出大段假覆盖
-            if (this._lastIdx) this._lastIdx = this._lastIdx.map(() => null);
+            // 落笔重置当前笔的插值链（插值只在一次连续拖动内生效）
+            this._lastIdx[this._strokeIdx] = null;
             this._updateProgress(p.x, p.y); this.redraw();
         }
         else if (this.mode === 'coloring') { this.lastFillPos = null; this._paintAt(p.x, p.y); }
     },
     _onMove(p) {
         if (!this._isDrawing) return;
-        if (this.mode === 'tracing') { this._updateProgress(p.x, p.y); this.redraw(); }
+        if (this.mode === 'tracing') {
+            this._updateProgress(p.x, p.y);
+            // 当前笔描满 98% 且还有下一笔 → 自动解锁，连续运笔不断手
+            if (this._partProgress[this._strokeIdx] >= 0.98 && this._strokeIdx < this._partCounts.length - 1) this._advanceStroke();
+            this.redraw();
+        }
         else if (this.mode === 'coloring') { this._paintAt(p.x, p.y); }
     },
     _onEnd() {
         this._isDrawing = false;
-        if (this.mode === 'tracing') this._checkTracingDone();
+        if (this.mode === 'tracing') this._finishStroke();
         else if (this.mode === 'coloring') { this.lastFillPos = null; this.redraw(); this._checkColoringDone(); }
     }
 };
