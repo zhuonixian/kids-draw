@@ -39,19 +39,27 @@ assert(
 );
 assert(
     stickers.includes('const StickerLibrary') && stickers.includes('assetType') && stickers.includes('image/svg+xml'),
-    'StickerLibrary should provide SVG stickers through a PNG-ready asset registry.'
+    'StickerLibrary should provide PNG stickers through the asset registry with SVG fallbacks.'
 );
 assert(
-    ['ocean', 'dino', 'space', 'music'].every(category => stickers.includes(`${category}:`)),
-    'StickerLibrary should include expanded ocean, dino, space, and music categories.'
+    ['ocean', 'dinosaurs', 'space', 'music'].every(category => stickers.includes(`${category}:`)),
+    'StickerLibrary should include expanded ocean, dinosaurs, space, and music categories.'
 );
 assert(
-    stickers.includes('chickteam:') && ['captainchick', 'flowerchick', 'babychick', 'pilotchick'].every(id => stickers.includes(id)),
+    stickers.includes('chicks:') && ['captainchick', 'flowerchick', 'fluffychick', 'pilotchick'].every(id => stickers.includes(id)),
     'StickerLibrary should include an original chick-team category and variants.'
 );
 assert(
-    (stickers.match(/assetType: 'svg'/g) || []).length >= 38,
-    'StickerLibrary should include at least 38 built-in cartoon stickers.'
+    (stickers.match(/pngSticker\(/g) || []).length >= 100,
+    'StickerLibrary should include at least 100 AI-generated PNG stickers.'
+);
+assert(
+    (stickers.match(/assetType: 'svg'/g) || []).length >= 1,
+    'StickerLibrary should keep programmatic SVG stickers as offline fallbacks.'
+);
+assert(
+    stickers.includes("pngSticker('friends', 'piggy'") && freecanvas.includes("currentStickerId: 'piggy'"),
+    'FreeCanvas default sticker id should exist in the PNG sticker registry.'
 );
 assert(
     index.indexOf('js/stickers.js') > -1 && index.indexOf('js/stickers.js') < index.indexOf('js/freecanvas.js'),
