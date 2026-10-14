@@ -62,11 +62,12 @@ const FreeCanvas = {
     currentShapeType: 'circle',
     currentShapeCategory: 'basic',
 
+    // 图形分类：几何/符号类程序化绘制精确可控、可填色，与贴纸 PNG 差异化；
+    // 抽象的动物/自然/卡通简笔画已移除（贴纸库 21 类 PNG 全面覆盖）
     shapeCategories: {
-        basic:  { label: '基础', shapes: ['circle', 'rect', 'triangle', 'star', 'heart'] },
-        animal: { label: '动物', shapes: ['cat', 'bunny', 'bear', 'fish', 'chick'] },
-        nature: { label: '自然', shapes: ['sun', 'cloud', 'flower', 'tree', 'mushroom'] },
-        fun:    { label: '卡通', shapes: ['house', 'car', 'rocket', 'crown', 'balloon'] }
+        basic:  { label: '基础', shapes: ['circle', 'ellipse', 'square', 'rect', 'triangle', 'pentagon', 'hexagon', 'octagon', 'diamond', 'parallelogram', 'trapezoid', 'semicircle'] },
+        fun:    { label: '趣味', shapes: ['star', 'fourstar', 'heart', 'crescent', 'drop', 'sun', 'cloud', 'flower', 'snowflake', 'gem'] },
+        symbol: { label: '符号', shapes: ['arrow', 'bubble', 'note', 'bolt', 'plus'] }
     },
 
     bgColors: ['#FFFFFF', '#FFF8E7', '#F0F4FF', '#FDE8E8', '#E8F5E9', '#FFF3E0', '#F3E5F5', '#E0F7FA'],
@@ -578,29 +579,45 @@ const FreeCanvas = {
     },
 
     _shapeIcon(type) {
-        const icons = {
-            circle: '<svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/></svg>',
-            rect: '<svg viewBox="0 0 24 24" width="18" height="18"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2" fill="none"/></svg>',
-            triangle: '<svg viewBox="0 0 24 24" width="18" height="18"><polygon points="12,3 22,21 2,21" stroke="currentColor" stroke-width="2" fill="none"/></svg>',
-            star: '<svg viewBox="0 0 24 24" width="18" height="18"><polygon points="12,2 15,9 22,9 16,14 18,21 12,17 6,21 8,14 2,9 9,9" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>',
-            heart: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 21C12 21 3 14 3 8.5 3 5.5 5.5 3 8 3c1.5 0 3 1 4 3 1-2 2.5-3 4-3 2.5 0 5 2.5 5 5.5C21 14 12 21 12 21z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>',
-            cat: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 6L6 2 9 6M20 6L18 2 15 6" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="9" cy="11" r="1" fill="currentColor"/><circle cx="15" cy="11" r="1" fill="currentColor"/><path d="M10 15 Q12 17 14 15" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>',
-            bunny: '<svg viewBox="0 0 24 24" width="18" height="18"><ellipse cx="8" cy="4" rx="3" ry="6" stroke="currentColor" stroke-width="1.5" fill="none"/><ellipse cx="16" cy="4" rx="3" ry="6" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="12" cy="14" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="10" cy="13" r="1" fill="currentColor"/><circle cx="14" cy="13" r="1" fill="currentColor"/></svg>',
-            bear: '<svg viewBox="0 0 24 24" width="18" height="18"><circle cx="6" cy="6" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="18" cy="6" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><ellipse cx="12" cy="15" rx="2" ry="1.5" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>',
-            fish: '<svg viewBox="0 0 24 24" width="18" height="18"><ellipse cx="10" cy="12" rx="8" ry="5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M18 12l4-4v8z" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="6" cy="11" r="1" fill="currentColor"/></svg>',
-            chick: '<svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M9 16 Q12 18 15 16" stroke="currentColor" stroke-width="1.2" fill="none"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/><path d="M11 14l1 2 1-2" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>',
-            sun: '<svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.5" fill="none"/><g stroke="currentColor" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/><line x1="4.2" y1="4.2" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.8" y2="19.8"/><line x1="4.2" y1="19.8" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.8" y2="4.2"/></g></svg>',
-            cloud: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 19a4 4 0 01-.5-7.97A7 7 0 0118 13h1a3 3 0 010 6H6z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>',
-            flower: '<svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="9" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="8" cy="7" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="16" cy="7" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="7" cy="11" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="17" cy="11" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="12" cy="9" r="2" fill="currentColor"/><line x1="12" y1="14" x2="12" y2="22" stroke="currentColor" stroke-width="1.5"/></svg>',
-            tree: '<svg viewBox="0 0 24 24" width="18" height="18"><rect x="10" y="18" width="4" height="4" stroke="currentColor" stroke-width="1.2" fill="none"/><polygon points="12,2 4,12 8,12 2,18 22,18 16,12 20,12" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>',
-            mushroom: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 14a8 8 0 0116 0" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="9" y="14" width="6" height="7" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="9" cy="10" r="1.5" fill="currentColor"/><circle cx="15" cy="11" r="1" fill="currentColor"/></svg>',
-            house: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 12l9-9 9 9" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="5" y="12" width="14" height="9" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="9" y="16" width="3" height="5" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>',
-            car: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 14l2-5h10l2 5" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="3" y="14" width="18" height="5" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="7" cy="19" r="2" stroke="currentColor" stroke-width="1.2" fill="none"/><circle cx="17" cy="19" r="2" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>',
-            rocket: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2c-2 4-3 8-3 12h6c0-4-1-8-3-12z" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M9 14l-3 4h3M15 14l3 4h-3" stroke="currentColor" stroke-width="1.2" fill="none"/><circle cx="12" cy="10" r="1.5" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>',
-            crown: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M2 18l3-10 4 5 3-8 3 8 4-5 3 10z" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="2" y1="18" x2="22" y2="18" stroke="currentColor" stroke-width="1.5"/></svg>',
-            balloon: '<svg viewBox="0 0 24 24" width="18" height="18"><ellipse cx="12" cy="9" rx="6" ry="8" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M10 17l-1 5M14 17l1 5" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M12 17l-1 1h2z" fill="currentColor"/></svg>'
+        // 24px 线框小图标：几何 path 与 _shapePath 形状一致（stroke 显示）
+        const poly = (n, r, rot) => {
+            const pts = [];
+            for (let i = 0; i < n; i++) {
+                const a = rot + i / n * Math.PI * 2;
+                pts.push((12 + Math.cos(a) * r * 9.5).toFixed(1) + ',' + (12 + Math.sin(a) * r * 9.5).toFixed(1));
+            }
+            return '<polygon points="' + pts.join(' ') + '" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/>';
         };
-        return icons[type] || icons.circle;
+        const icons = {
+            circle: '<circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6" fill="none"/>',
+            ellipse: '<ellipse cx="12" cy="12" rx="9.5" ry="7" stroke="currentColor" stroke-width="1.6" fill="none"/>',
+            square: '<rect x="4.5" y="4.5" width="15" height="15" rx="1.5" stroke="currentColor" stroke-width="1.6" fill="none"/>',
+            rect: '<rect x="3" y="6.5" width="18" height="11" rx="1.5" stroke="currentColor" stroke-width="1.6" fill="none"/>',
+            triangle: poly(3, 0.85, -Math.PI / 2),
+            pentagon: poly(5, 0.85, -Math.PI / 2),
+            hexagon: poly(6, 0.85, -Math.PI / 2),
+            octagon: poly(8, 0.85, -Math.PI / 2 + Math.PI / 8),
+            diamond: '<polygon points="12,3.5 19,12 12,20.5 5,12" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/>',
+            parallelogram: '<polygon points="7,18 10,6 21,6 18,18" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/>',
+            trapezoid: '<polygon points="8,7 16,7 20,17 4,17" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/>',
+            semicircle: '<path d="M3.5 15 A8.5 8.5 0 0 1 20.5 15 Z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/>',
+            star: '<polygon points="12,3 14.6,8.7 20.8,9.4 16.2,13.6 17.5,19.7 12,16.6 6.5,19.7 7.8,13.6 3.2,9.4 9.4,8.7" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>',
+            fourstar: '<polygon points="12,3 14,10 21,12 14,14 12,21 10,14 3,12 10,10" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>',
+            heart: '<path d="M12 20C12 20 4 14.5 4 9.5 4 6.5 6.2 4.5 8.5 4.5c1.4 0 2.7 1 3.5 2.5.8-1.5 2.1-2.5 3.5-2.5 2.3 0 4.5 2 4.5 5 0 5-8 10.5-8 10.5z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>',
+            crescent: '<path d="M14.5 3.5 A9 9 0 1 0 14.5 20.5 A7 7 0 1 1 14.5 3.5 Z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>',
+            drop: '<path d="M12 3 C16 8 17.5 11 17.5 14 A5.5 5.5 0 0 1 6.5 14 C6.5 11 8 8 12 3 Z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>',
+            sun: '<circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6" fill="none"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5 5l1.9 1.9M17.1 17.1L19 19M5 19l1.9-1.9M17.1 6.9L19 5"/></g>',
+            cloud: '<path d="M6.5 17.5a3.6 3.6 0 01-.5-7.2A6 6 0 0117.6 11h.9a3.3 3.3 0 010 6.5z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/>',
+            flower: '<g stroke="currentColor" stroke-width="1.4" fill="none"><ellipse cx="12" cy="7" rx="2.6" ry="3.4"/><ellipse cx="12" cy="17" rx="2.6" ry="3.4"/><ellipse cx="7" cy="12" rx="3.4" ry="2.6"/><ellipse cx="17" cy="12" rx="3.4" ry="2.6"/><circle cx="12" cy="12" r="2"/></g>',
+            snowflake: '<g stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"><polygon points="12,4 19,16 5,16"/><polygon points="12,20 5,8 19,8"/></g>',
+            gem: '<polygon points="5,8.5 8,4.5 16,4.5 19,8.5 12,19.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>',
+            arrow: '<polygon points="12,3 17.5,9 14.2,9 14.2,21 9.8,21 9.8,9 6.5,9" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>',
+            bubble: '<path d="M4 10.5 A8 6 0 0 1 20 10.5 A8 6 0 0 1 4 10.5 Z M8.5 15.5 L6.5 20 L11.5 16.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>',
+            note: '<g stroke="currentColor" stroke-width="1.5" fill="none"><ellipse cx="8.5" cy="16.5" rx="3.2" ry="2.4" transform="rotate(-18 8.5 16.5)"/><path d="M11.5 16V4.5h4 c-0.5 2.5 1.5 4 2.5 5.5"/></g>',
+            bolt: '<polygon points="13.5,3 6.5,13 10,13 8.5,21 15.5,11 12,11" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>',
+            plus: '<path d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>'
+        };
+        return '<svg viewBox="0 0 24 24" width="18" height="18">' + (icons[type] || icons.circle) + '</svg>';
     },
 
     _updateHighlight() {
@@ -1173,31 +1190,15 @@ const FreeCanvas = {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
-        if (['circle', 'rect', 'triangle', 'star', 'heart', 'sun', 'cloud', 'flower', 'tree', 'mushroom', 'crown', 'balloon'].includes(type)) {
+        // 友好圆润的图形加笑脸+小手；细长/尖锐/符号类不加，保持形状语义
+        if (['circle', 'ellipse', 'square', 'rect', 'triangle', 'pentagon', 'hexagon', 'octagon', 'semicircle', 'heart', 'drop', 'cloud', 'flower'].includes(type)) {
             this._drawTinyArms(ctx, x, y, r, type);
             this._drawHappyFace(ctx, x, y - r * 0.04, r * 0.52);
-        } else if (type === 'cat') {
-            this._drawHappyFace(ctx, x, y + r * 0.06, r * 0.62);
-            this._drawWhiskers(ctx, x, y + r * 0.08, r);
-        } else if (type === 'bunny') {
-            this._drawHappyFace(ctx, x, y + r * 0.22, r * 0.5);
-        } else if (type === 'bear') {
-            this._drawHappyFace(ctx, x, y + r * 0.14, r * 0.58);
-            this._drawSnout(ctx, x, y + r * 0.22, r);
-        } else if (type === 'fish') {
-            this._drawSideFace(ctx, x - r * 0.28, y, r);
-            this._drawFins(ctx, x, y, r);
-        } else if (type === 'chick') {
-            this._drawHappyFace(ctx, x - r * 0.05, y - r * 0.04, r * 0.5);
-            this._drawBeak(ctx, x + r * 0.12, y + r * 0.02, r);
-        } else if (type === 'house') {
-            this._drawHouseFace(ctx, x, y, r);
-        } else if (type === 'car') {
-            this._drawCarFace(ctx, x, y, r);
-        } else if (type === 'rocket') {
-            this._drawRocketFace(ctx, x, y, r);
+        } else if (type === 'sun') {
+            this._drawHappyFace(ctx, x, y, r * 0.44);
+        } else if (type === 'gem') {
+            this._drawHappyFace(ctx, x, y + r * 0.05, r * 0.38);
         }
-
         ctx.restore();
     },
 
@@ -1216,15 +1217,6 @@ const FreeCanvas = {
         ctx.restore();
     },
 
-    _drawSideFace(ctx, x, y, r) {
-        ctx.save();
-        ctx.fillStyle = '#3E2723';
-        ctx.beginPath(); ctx.arc(x - r * 0.16, y - r * 0.13, Math.max(2, r * 0.08), 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#3E2723';
-        ctx.lineWidth = Math.max(2, r * 0.05);
-        ctx.beginPath(); ctx.arc(x - r * 0.02, y + r * 0.02, r * 0.22, 0.25 * Math.PI, 0.7 * Math.PI); ctx.stroke();
-        ctx.restore();
-    },
 
     _drawCheeks(ctx, x, y, r) {
         ctx.save();
@@ -1235,7 +1227,7 @@ const FreeCanvas = {
     },
 
     _drawTinyArms(ctx, x, y, r, type) {
-        const yOffset = type === 'tree' ? r * 0.18 : type === 'balloon' ? r * 0.05 : 0;
+        const yOffset = type === 'cloud' || type === 'flower' ? r * 0.05 : 0;
         ctx.save();
         ctx.strokeStyle = '#6D4C41';
         ctx.lineWidth = Math.max(2, r * 0.055);
@@ -1248,147 +1240,77 @@ const FreeCanvas = {
         ctx.restore();
     },
 
-    _drawWhiskers(ctx, x, y, r) {
-        ctx.save();
-        ctx.strokeStyle = '#6D4C41';
-        ctx.lineWidth = Math.max(1.5, r * 0.035);
-        [-0.08, 0.08].forEach(offset => {
-            ctx.beginPath();
-            ctx.moveTo(x - r * 0.18, y + r * offset);
-            ctx.lineTo(x - r * 0.68, y + r * (offset - 0.08));
-            ctx.moveTo(x + r * 0.18, y + r * offset);
-            ctx.lineTo(x + r * 0.68, y + r * (offset - 0.08));
-            ctx.stroke();
-        });
-        ctx.restore();
-    },
 
-    _drawSnout(ctx, x, y, r) {
-        ctx.save();
-        ctx.fillStyle = 'rgba(255,255,255,0.55)';
-        ctx.strokeStyle = '#6D4C41';
-        ctx.lineWidth = Math.max(1.5, r * 0.035);
-        ctx.beginPath(); ctx.ellipse(x, y, r * 0.2, r * 0.14, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#3E2723';
-        ctx.beginPath(); ctx.ellipse(x, y - r * 0.03, r * 0.055, r * 0.04, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-    },
 
-    _drawBeak(ctx, x, y, r) {
-        ctx.save();
-        ctx.fillStyle = '#FFA36C';
-        ctx.strokeStyle = '#6D4C41';
-        ctx.lineWidth = Math.max(1, r * 0.025);
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + r * 0.26, y + r * 0.09);
-        ctx.lineTo(x, y + r * 0.18);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-    },
 
-    _drawFins(ctx, x, y, r) {
-        ctx.save();
-        ctx.strokeStyle = '#6D4C41';
-        ctx.lineWidth = Math.max(1.5, r * 0.035);
-        ctx.beginPath();
-        ctx.moveTo(x, y - r * 0.16);
-        ctx.quadraticCurveTo(x + r * 0.18, y - r * 0.42, x + r * 0.36, y - r * 0.14);
-        ctx.moveTo(x, y + r * 0.2);
-        ctx.quadraticCurveTo(x + r * 0.18, y + r * 0.46, x + r * 0.38, y + r * 0.18);
-        ctx.stroke();
-        ctx.restore();
-    },
 
-    _drawHouseFace(ctx, x, y, r) {
-        this._drawHappyFace(ctx, x, y + r * 0.48, r * 0.38);
-        ctx.save();
-        ctx.fillStyle = 'rgba(116,185,255,0.65)';
-        ctx.strokeStyle = '#6D4C41';
-        ctx.lineWidth = Math.max(1.5, r * 0.035);
-        ctx.beginPath(); ctx.rect(x - r * 0.55, y + r * 0.18, r * 0.24, r * 0.22); ctx.fill(); ctx.stroke();
-        ctx.beginPath(); ctx.rect(x + r * 0.31, y + r * 0.18, r * 0.24, r * 0.22); ctx.fill(); ctx.stroke();
-        ctx.restore();
-    },
 
-    _drawCarFace(ctx, x, y, r) {
-        ctx.save();
-        ctx.fillStyle = '#3E2723';
-        ctx.beginPath(); ctx.arc(x - r * 0.28, y - r * 0.18, Math.max(2, r * 0.07), 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(x + r * 0.28, y - r * 0.18, Math.max(2, r * 0.07), 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#3E2723';
-        ctx.lineWidth = Math.max(2, r * 0.05);
-        ctx.beginPath(); ctx.moveTo(x - r * 0.18, y); ctx.quadraticCurveTo(x, y + r * 0.16, x + r * 0.18, y); ctx.stroke();
-        ctx.restore();
-    },
 
-    _drawRocketFace(ctx, x, y, r) {
-        ctx.save();
-        ctx.fillStyle = 'rgba(116,185,255,0.72)';
-        ctx.strokeStyle = '#6D4C41';
-        ctx.lineWidth = Math.max(1.5, r * 0.035);
-        ctx.beginPath(); ctx.arc(x, y - r * 0.22, r * 0.22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        this._drawHappyFace(ctx, x, y + r * 0.18, r * 0.34);
-        ctx.restore();
-    },
 
     _shapePath(ctx, type, x, y, s) {
         ctx.beginPath();
+        // 正多边形辅助
+        const poly = (n, r, rot) => {
+            for (let i = 0; i < n; i++) {
+                const a = rot + i / n * Math.PI * 2;
+                const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+                i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+        };
+        // 尖角星辅助（2n 个点，外内半径交替）
+        const spike = (n, rOuter, rInner, rot) => {
+            for (let i = 0; i < n * 2; i++) {
+                const a = rot + i * Math.PI / n;
+                const r = i % 2 === 0 ? rOuter : rInner;
+                const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+                i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+        };
         switch (type) {
+            // === 基础几何 ===
             case 'circle': ctx.arc(x, y, s, 0, Math.PI * 2); break;
-            case 'rect': ctx.rect(x - s, y - s * 0.75, s * 2, s * 1.5); break;
-            case 'triangle': ctx.moveTo(x, y - s); ctx.lineTo(x + s, y + s * 0.7); ctx.lineTo(x - s, y + s * 0.7); ctx.closePath(); break;
-            case 'star': {
-                for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 - Math.PI / 2; const r = i % 2 === 0 ? s : s * 0.45; const px = x + r * Math.cos(a), py = y + r * Math.sin(a); i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
-                ctx.closePath(); break;
-            }
+            case 'ellipse': ctx.ellipse(x, y, s, s * 0.72, 0, 0, Math.PI * 2); break;
+            case 'square': ctx.rect(x - s * 0.82, y - s * 0.82, s * 1.64, s * 1.64); break;
+            case 'rect': ctx.rect(x - s, y - s * 0.68, s * 2, s * 1.36); break;
+            case 'triangle': poly(3, s, -Math.PI / 2); break;
+            case 'pentagon': poly(5, s, -Math.PI / 2); break;
+            case 'hexagon': poly(6, s, -Math.PI / 2); break;
+            case 'octagon': poly(8, s, -Math.PI / 2 + Math.PI / 8); break;
+            case 'diamond':
+                ctx.moveTo(x, y - s); ctx.lineTo(x + s * 0.72, y);
+                ctx.lineTo(x, y + s); ctx.lineTo(x - s * 0.72, y); ctx.closePath(); break;
+            case 'parallelogram':
+                ctx.moveTo(x - s * 0.95, y + s * 0.6); ctx.lineTo(x - s * 0.45, y - s * 0.6);
+                ctx.lineTo(x + s * 0.95, y - s * 0.6); ctx.lineTo(x + s * 0.45, y + s * 0.6); ctx.closePath(); break;
+            case 'trapezoid':
+                ctx.moveTo(x - s * 0.6, y - s * 0.62); ctx.lineTo(x + s * 0.6, y - s * 0.62);
+                ctx.lineTo(x + s, y + s * 0.62); ctx.lineTo(x - s, y + s * 0.62); ctx.closePath(); break;
+            case 'semicircle':
+                ctx.arc(x, y + s * 0.35, s * 0.92, Math.PI, 0); ctx.closePath(); break;
+            // === 趣味图形 ===
+            case 'star': spike(5, s, s * 0.45, -Math.PI / 2); break;
+            case 'fourstar': spike(4, s, s * 0.4, -Math.PI / 2); break;
             case 'heart': {
-                const sc = s * 0.06;
-                for (let i = 0; i <= 40; i++) { const t = i / 40 * Math.PI * 2; const hx = x + sc * 16 * Math.pow(Math.sin(t), 3); const hy = y - sc * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)); i === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy); }
+                const sc = s * 0.062;
+                for (let i = 0; i <= 40; i++) {
+                    const t = i / 40 * Math.PI * 2;
+                    const hx = x + sc * 16 * Math.pow(Math.sin(t), 3);
+                    const hy = y - sc * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+                    i === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
+                }
                 ctx.closePath(); break;
             }
-            case 'cat': {
-                // 猫脸
-                const r = s;
-                ctx.arc(x, y, r, 0, Math.PI * 2); ctx.closePath();
-                // 左耳
-                ctx.moveTo(x - r * 0.85, y - r * 0.3); ctx.lineTo(x - r * 0.6, y - r * 1.1); ctx.lineTo(x - r * 0.2, y - r * 0.55);
-                // 右耳
-                ctx.moveTo(x + r * 0.85, y - r * 0.3); ctx.lineTo(x + r * 0.6, y - r * 1.1); ctx.lineTo(x + r * 0.2, y - r * 0.55);
-                break;
-            }
-            case 'bunny': {
-                const r = s;
-                ctx.arc(x, y + r * 0.2, r * 0.8, 0, Math.PI * 2); ctx.closePath();
-                // 左耳
-                ctx.moveTo(x - r * 0.35, y - r * 0.4); ctx.ellipse(x - r * 0.35, y - r * 1, r * 0.18, r * 0.6, 0, 0, Math.PI * 2);
-                // 右耳
-                ctx.moveTo(x + r * 0.35, y - r * 0.4); ctx.ellipse(x + r * 0.35, y - r * 1, r * 0.18, r * 0.6, 0, 0, Math.PI * 2);
-                break;
-            }
-            case 'bear': {
-                const r = s;
-                ctx.arc(x, y + r * 0.1, r, 0, Math.PI * 2); ctx.closePath();
-                // 左耳
-                ctx.moveTo(x - r * 0.8, y - r * 0.5); ctx.arc(x - r * 0.8, y - r * 0.7, r * 0.3, 0, Math.PI * 2);
-                // 右耳
-                ctx.moveTo(x + r * 0.8, y - r * 0.5); ctx.arc(x + r * 0.8, y - r * 0.7, r * 0.3, 0, Math.PI * 2);
-                break;
-            }
-            case 'fish': {
-                ctx.ellipse(x, y, s, s * 0.55, 0, 0, Math.PI * 2); ctx.closePath();
-                // 尾巴
-                ctx.moveTo(x + s, y); ctx.lineTo(x + s * 1.5, y - s * 0.5); ctx.lineTo(x + s * 1.5, y + s * 0.5); ctx.closePath();
-                break;
-            }
-            case 'chick': {
-                ctx.arc(x, y, s * 0.85, 0, Math.PI * 2); ctx.closePath();
-                // 小嘴
-                ctx.moveTo(x + s * 0.8, y); ctx.lineTo(x + s * 1.3, y + s * 0.1); ctx.lineTo(x + s * 0.8, y + s * 0.2); ctx.closePath();
-                break;
-            }
+            case 'crescent':
+                ctx.arc(x + s * 0.3, y, s, Math.PI * 1.5, Math.PI * 0.5, true);
+                ctx.arc(x - s * 0.14, y, s * 0.74, Math.PI * 0.5, Math.PI * 1.5, true);
+                ctx.closePath(); break;
+            case 'drop':
+                ctx.moveTo(x, y - s);
+                ctx.bezierCurveTo(x + s * 0.78, y - s * 0.12, x + s * 0.64, y + s * 0.58, x, y + s * 0.8);
+                ctx.bezierCurveTo(x - s * 0.64, y + s * 0.58, x - s * 0.78, y - s * 0.12, x, y - s);
+                ctx.closePath(); break;
             case 'sun': {
                 ctx.arc(x, y, s * 0.5, 0, Math.PI * 2); ctx.closePath();
                 for (let i = 0; i < 8; i++) {
@@ -1413,61 +1335,59 @@ const FreeCanvas = {
                 ctx.moveTo(x, y); ctx.arc(x, y, s * 0.2, 0, Math.PI * 2);
                 break;
             }
-            case 'tree': {
-                ctx.moveTo(x, y - s); ctx.lineTo(x + s * 0.7, y); ctx.lineTo(x + s * 0.2, y); ctx.lineTo(x + s * 0.5, y + s * 0.6);
-                ctx.lineTo(x - s * 0.5, y + s * 0.6); ctx.lineTo(x - s * 0.2, y); ctx.lineTo(x - s * 0.7, y); ctx.closePath();
+            case 'snowflake':
+                poly(3, s, -Math.PI / 2);
+                poly(3, s, Math.PI / 2);
                 break;
+            case 'gem':
+                ctx.moveTo(x - s * 0.85, y - s * 0.32);
+                ctx.lineTo(x - s * 0.45, y - s * 0.78);
+                ctx.lineTo(x + s * 0.45, y - s * 0.78);
+                ctx.lineTo(x + s * 0.85, y - s * 0.32);
+                ctx.lineTo(x, y + s * 0.85);
+                ctx.closePath(); break;
+            // === 符号 ===
+            case 'arrow':
+                ctx.moveTo(x, y - s);
+                ctx.lineTo(x + s * 0.65, y - s * 0.28);
+                ctx.lineTo(x + s * 0.3, y - s * 0.28);
+                ctx.lineTo(x + s * 0.3, y + s);
+                ctx.lineTo(x - s * 0.3, y + s);
+                ctx.lineTo(x - s * 0.3, y - s * 0.28);
+                ctx.lineTo(x - s * 0.65, y - s * 0.28);
+                ctx.closePath(); break;
+            case 'bubble': {
+                ctx.ellipse(x, y - s * 0.12, s * 0.95, s * 0.68, 0, 0, Math.PI * 2);
+                ctx.moveTo(x - s * 0.28, y + s * 0.5);
+                ctx.lineTo(x - s * 0.5, y + s * 0.88);
+                ctx.lineTo(x + s * 0.16, y + s * 0.52);
+                ctx.closePath(); break;
             }
-            case 'mushroom': {
-                ctx.arc(x, y - s * 0.2, s * 0.8, Math.PI, 0); ctx.closePath();
-                ctx.moveTo(x + s * 0.35, y - s * 0.2); ctx.lineTo(x + s * 0.3, y + s * 0.6);
-                ctx.lineTo(x - s * 0.3, y + s * 0.6); ctx.lineTo(x - s * 0.35, y - s * 0.2); ctx.closePath();
-                break;
-            }
-            case 'house': {
-                // 墙体
-                ctx.rect(x - s * 0.7, y, s * 1.4, s);
-                // 屋顶
-                ctx.moveTo(x - s, y); ctx.lineTo(x, y - s); ctx.lineTo(x + s, y); ctx.closePath();
-                // 门
-                ctx.moveTo(x + s * 0.15, y + s); ctx.rect(x - s * 0.15, y + s * 0.4, s * 0.3, s * 0.6);
-                break;
-            }
-            case 'car': {
-                // 车身
-                ctx.moveTo(x - s, y + s * 0.1); ctx.lineTo(x - s, y - s * 0.3); ctx.lineTo(x - s * 0.5, y - s * 0.3);
-                ctx.lineTo(x - s * 0.3, y - s * 0.8); ctx.lineTo(x + s * 0.3, y - s * 0.8);
-                ctx.lineTo(x + s * 0.5, y - s * 0.3); ctx.lineTo(x + s, y - s * 0.3);
-                ctx.lineTo(x + s, y + s * 0.1); ctx.closePath();
-                // 轮子
-                ctx.moveTo(x - s * 0.5, y + s * 0.1); ctx.arc(x - s * 0.5, y + s * 0.1, s * 0.2, 0, Math.PI * 2);
-                ctx.moveTo(x + s * 0.5, y + s * 0.1); ctx.arc(x + s * 0.5, y + s * 0.1, s * 0.2, 0, Math.PI * 2);
-                break;
-            }
-            case 'rocket': {
-                ctx.moveTo(x, y - s); ctx.quadraticCurveTo(x + s * 0.5, y - s * 0.3, x + s * 0.4, y + s * 0.5);
-                ctx.lineTo(x - s * 0.4, y + s * 0.5); ctx.quadraticCurveTo(x - s * 0.5, y - s * 0.3, x, y - s); ctx.closePath();
-                // 翅膀
-                ctx.moveTo(x - s * 0.4, y + s * 0.2); ctx.lineTo(x - s * 0.7, y + s * 0.6); ctx.lineTo(x - s * 0.3, y + s * 0.5);
-                ctx.moveTo(x + s * 0.4, y + s * 0.2); ctx.lineTo(x + s * 0.7, y + s * 0.6); ctx.lineTo(x + s * 0.3, y + s * 0.5);
-                // 窗口
-                ctx.moveTo(x + s * 0.15, y - s * 0.2); ctx.arc(x, y - s * 0.2, s * 0.15, 0, Math.PI * 2);
-                break;
-            }
-            case 'crown': {
-                ctx.moveTo(x - s, y + s * 0.5); ctx.lineTo(x - s, y - s * 0.3);
-                ctx.lineTo(x - s * 0.5, y + s * 0.1); ctx.lineTo(x, y - s);
-                ctx.lineTo(x + s * 0.5, y + s * 0.1); ctx.lineTo(x + s, y - s * 0.3);
-                ctx.lineTo(x + s, y + s * 0.5); ctx.closePath();
-                break;
-            }
-            case 'balloon': {
-                ctx.ellipse(x, y - s * 0.15, s * 0.55, s * 0.75, 0, 0, Math.PI * 2); ctx.closePath();
-                // 底部三角
-                ctx.moveTo(x - s * 0.1, y + s * 0.55); ctx.lineTo(x, y + s * 0.4); ctx.lineTo(x + s * 0.1, y + s * 0.55); ctx.closePath();
-                // 线
-                ctx.moveTo(x, y + s * 0.55); ctx.quadraticCurveTo(x + s * 0.1, y + s * 0.8, x - s * 0.05, y + s);
-                break;
+            case 'note':
+                ctx.ellipse(x - s * 0.28, y + s * 0.55, s * 0.44, s * 0.32, -0.35, 0, Math.PI * 2);
+                ctx.moveTo(x + s * 0.1, y - s * 0.85);
+                ctx.rect(x + s * 0.1, y - s * 0.85, s * 0.16, s * 1.4);
+                ctx.moveTo(x + s * 0.26, y - s * 0.85);
+                ctx.quadraticCurveTo(x + s * 0.85, y - s * 0.55, x + s * 0.62, y + s * 0.05);
+                ctx.lineTo(x + s * 0.26, y - s * 0.2);
+                ctx.closePath(); break;
+            case 'bolt':
+                ctx.moveTo(x + s * 0.28, y - s);
+                ctx.lineTo(x - s * 0.55, y + s * 0.12);
+                ctx.lineTo(x - s * 0.05, y + s * 0.12);
+                ctx.lineTo(x - s * 0.28, y + s);
+                ctx.lineTo(x + s * 0.55, y - s * 0.12);
+                ctx.lineTo(x + s * 0.05, y - s * 0.12);
+                ctx.closePath(); break;
+            case 'plus': {
+                const a = s * 0.34;
+                ctx.moveTo(x - a, y - s); ctx.lineTo(x + a, y - s);
+                ctx.lineTo(x + a, y - a); ctx.lineTo(x + s, y - a);
+                ctx.lineTo(x + s, y + a); ctx.lineTo(x + a, y + a);
+                ctx.lineTo(x + a, y + s); ctx.lineTo(x - a, y + s);
+                ctx.lineTo(x - a, y + a); ctx.lineTo(x - s, y + a);
+                ctx.lineTo(x - s, y - a); ctx.lineTo(x - a, y - a);
+                ctx.closePath(); break;
             }
             default: ctx.arc(x, y, s, 0, Math.PI * 2);
         }

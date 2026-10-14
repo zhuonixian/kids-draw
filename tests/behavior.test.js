@@ -137,6 +137,16 @@ assert(
     'FreeCanvas should offer an idea dice for creative prompts.'
 );
 assert(
+    ['basic:', 'fun:', 'symbol:'].every(c => freecanvas.includes(c))
+        && freecanvas.includes("'pentagon'") && freecanvas.includes("'trapezoid'") && freecanvas.includes("'crescent'")
+        && freecanvas.includes("'bubble'") && freecanvas.includes("'bolt'"),
+    'Shape tool should offer enriched geometry, fun, and symbol categories instead of abstract animals.'
+);
+assert(
+    !freecanvas.includes("'animal'") && !freecanvas.includes("_drawWhiskers"),
+    'Abstract animal doodles should be removed from the shape tool (covered by PNG stickers).'
+);
+assert(
     !tracing.includes('ctx.closePath(); ctx.stroke();'),
     'Covered stroke segments must not close their path: closing draws a chord across the shape when coverage splits into runs.'
 );
