@@ -197,18 +197,21 @@ const App = {
         if (!this.soundEnabled) return;
         try {
             const ctx = this._getAudioCtx();
-            if (!this._noiseBuffer || this._noiseBuffer.sampleRate !== ctx.sampleRate) {
-                const frameCount = Math.max(1, Math.floor(ctx.sampleRate * 0.06));
-                const buf = ctx.createBuffer(1, frameCount, ctx.sampleRate);
+            const frameCount = Math.max(1, Math.floor(ctx.sampleRate * duration));
+            // 噪声源保持 0.35s 素材：播放切片可能长于旧版 0.06s，
+            // 源不够长会让取样偏移变负、缓冲全 NaN，播放静默失败（音效消失的元凶）
+            if (!this._noiseBuffer || this._noiseBuffer.sampleRate !== ctx.sampleRate
+                || this._noiseBuffer.length < frameCount) {
+                const srcFrames = Math.max(Math.floor(ctx.sampleRate * 0.35), frameCount);
+                const buf = ctx.createBuffer(1, srcFrames, ctx.sampleRate);
                 const data = buf.getChannelData(0);
-                for (let i = 0; i < frameCount; i++) data[i] = Math.random() * 2 - 1;
+                for (let i = 0; i < srcFrames; i++) data[i] = Math.random() * 2 - 1;
                 this._noiseBuffer = buf;
             }
-            const frameCount = Math.max(1, Math.floor(ctx.sampleRate * duration));
             const buffer = ctx.createBuffer(1, frameCount, ctx.sampleRate);
             const src = this._noiseBuffer.getChannelData(0);
             const dst = buffer.getChannelData(0);
-            const offset = Math.floor(Math.random() * (src.length - frameCount));
+            const offset = Math.floor(Math.random() * Math.max(1, src.length - frameCount));
             for (let i = 0; i < frameCount; i++) dst[i] = src[offset + i] * (1 - i / frameCount);
             const source = ctx.createBufferSource();
             const filter = ctx.createBiquadFilter();
@@ -236,28 +239,28 @@ const App = {
         this._lastDrawSound = now;
         switch (brushType) {
             case 'crayon': // 素描纸沙沙：双层高频颗粒
-                this._noise(0.05, 0.15, 'highpass', 1900, 0.7);
-                this._noise(0.032, 0.09, 'highpass', 3800, 0.7);
+                this._noise(0.05, 0.2, 'highpass', 1900, 0.7);
+                this._noise(0.032, 0.12, 'highpass', 3800, 0.7);
                 break;
             case 'marker': // 湿润顺滑：低频长摩擦
-                this._noise(0.095, 0.11, 'lowpass', 750, 0.7);
+                this._noise(0.095, 0.15, 'lowpass', 750, 0.7);
                 this._tone(170 + Math.random() * 40, 0.05, 'sine', 0.028);
                 break;
             case 'brush': // 毛笔软刷：中频带通
-                this._noise(0.085, 0.12, 'bandpass', 620, 1.1);
+                this._noise(0.085, 0.16, 'bandpass', 620, 1.1);
                 break;
             case 'highlighter': // 轻滑
-                this._noise(0.07, 0.08, 'lowpass', 1400, 0.7);
+                this._noise(0.07, 0.11, 'lowpass', 1400, 0.7);
                 break;
             case 'spray': // 气体嘶嘶
-                this._noise(0.075, 0.1, 'highpass', 4600, 0.6);
+                this._noise(0.075, 0.14, 'highpass', 4600, 0.6);
                 break;
             case 'glow': case 'rainbow': // 闪亮轻快
                 this._tone(640 + Math.random() * 220, 0.04, 'sine', 0.05);
                 this._noise(0.03, 0.05, 'highpass', 2600, 0.7);
                 break;
             case 'eraser': // 擦纸闷响
-                this._noise(0.06, 0.13, 'lowpass', 480, 0.8);
+                this._noise(0.06, 0.17, 'lowpass', 480, 0.8);
                 break;
             default:
                 this._noise(0.05, 0.11);
