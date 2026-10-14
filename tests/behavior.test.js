@@ -120,6 +120,22 @@ assert(
     index.indexOf('js/missions.js') > index.indexOf('js/store.js') && index.indexOf('js/missions.js') < index.indexOf('js/freecanvas.js'),
     'Missions should load after store and before FreeCanvas.'
 );
+const card = fs.existsSync(path.join(root, 'js', 'card.js'))
+    ? fs.readFileSync(path.join(root, 'js', 'card.js'), 'utf8')
+    : '';
+assert(
+    card.includes('const CardMaker') && card.includes('compose(') && card.includes("ArtworkStore.save")
+        && ['confetti', 'love', 'star', 'flower', 'snow'].every(f => card.includes(`CardFrame_${f}`)),
+    'CardMaker should compose greeting cards with five programmatic frame styles.'
+);
+assert(
+    index.includes('id="card-panel"') && index.includes('id="lightbox-card"') && gallery.includes('CardMaker.open'),
+    'Gallery lightbox should expose a make-a-card entry into the card workshop.'
+);
+assert(
+    freecanvas.includes('ideas:') && freecanvas.includes('_lastIdea') && index.includes('id="fc-idea"'),
+    'FreeCanvas should offer an idea dice for creative prompts.'
+);
 assert(
     app.includes('playDrawSound') && app.includes('playStickerSound') && app.includes('playFillSound'),
     'App should expose drawing, sticker, and fill sound effects.'

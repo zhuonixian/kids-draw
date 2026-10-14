@@ -323,6 +323,16 @@
             <div class="toolbar-divider"></div>
             <!-- 功能 -->
             <div class="action-tools">
+                <button class="btn-action btn-mission" id="fc-idea" title="灵感骰子：不知道画什么就摇一摇" aria-label="灵感骰子">
+                    <svg viewBox="0 0 24 24" width="22" height="22">
+                        <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="4.2" fill="#A29BFE" stroke="#8977E8" stroke-width="1.4"/>
+                        <circle cx="8.2" cy="8.2" r="1.7" fill="#FFFBF0"/>
+                        <circle cx="15.8" cy="8.2" r="1.7" fill="#FFFBF0"/>
+                        <circle cx="12" cy="12" r="1.9" fill="#FFD93D"/>
+                        <circle cx="8.2" cy="15.8" r="1.7" fill="#FFFBF0"/>
+                        <circle cx="15.8" cy="15.8" r="1.7" fill="#FFFBF0"/>
+                    </svg>
+                </button>
                 <button class="btn-action btn-mission" id="fc-missions" title="小画家任务" aria-label="小画家任务">
                     <svg viewBox="0 0 24 24" width="22" height="22">
                         <path d="M7 3 H10.5 V8.2 A4.5 4.5 0 0 1 3.5 8.2 V5 A2 2 0 0 1 5.5 3 Z" transform="rotate(-12 7 5.5)" fill="#FFD93D" stroke="#F4B942" stroke-width="1"/>
@@ -437,9 +447,31 @@
             <div class="lightbox-body">
                 <img id="lightbox-img" alt="作品预览">
                 <div class="lightbox-actions">
+                    <button class="picker-action" id="lightbox-card">做成贺卡</button>
                     <button class="picker-action" id="lightbox-share">分享</button>
                     <button class="picker-action" id="lightbox-download">保存到设备</button>
                     <button class="picker-action danger" id="lightbox-delete">删除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 作品贺卡工坊（动态渲染） -->
+        <div class="picker-panel" id="card-panel">
+            <div class="picker-backdrop" data-close></div>
+            <div class="picker-sheet card-sheet">
+                <div class="picker-handle"></div>
+                <div class="picker-header">
+                    <span class="picker-title">🎀 作品贺卡</span>
+                    <button class="picker-close" data-close title="返回" aria-label="返回">
+                        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+                <div class="card-preview-wrap"><canvas id="card-preview"></canvas></div>
+                <div class="card-row"><span class="card-label">边框</span><div class="card-chips" id="card-frames"></div></div>
+                <div class="card-row"><span class="card-label">祝福</span><div class="card-chips" id="card-greetings"></div></div>
+                <div class="card-actions">
+                    <button class="picker-action" id="card-save">存进作品集</button>
+                    <button class="picker-action" id="card-download">保存图片</button>
                 </div>
             </div>
         </div>
@@ -510,6 +542,7 @@
     <script src="js/tracing.js"></script>
     <script src="js/freecanvas.js"></script>
     <script src="js/gallery.js"></script>
+    <script src="js/card.js"></script>
     <script src="js/parent.js"></script>
     <script>
         // PWA：Service Worker 注册（file:// 协议下静默跳过）

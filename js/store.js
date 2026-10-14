@@ -81,7 +81,8 @@ const ArtworkStore = {
     download(record) {
         const a = document.createElement('a');
         a.href = record.dataUrl;
-        a.download = '画画乐园-' + record.name + '-' + new Date(record.createdAt).toISOString().slice(0, 10) + '.jpg';
+        const ext = record.dataUrl && record.dataUrl.indexOf('image/png') === 5 ? 'png' : 'jpg';
+        a.download = '画画乐园-' + record.name + '-' + new Date(record.createdAt).toISOString().slice(0, 10) + '.' + ext;
         document.body.appendChild(a);
         a.click();
         a.remove();

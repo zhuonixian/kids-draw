@@ -1734,3 +1734,80 @@ html, body {
     font-size: 0.7rem;
     color: #8D6E63;
 }
+
+/* === 作品贺卡工坊 === */
+.card-sheet {
+    align-items: stretch;
+}
+
+.card-preview-wrap {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    background: #F5EDE0;
+    border-radius: 14px;
+    padding: 8px;
+}
+
+#card-preview {
+    width: min(300px, 60vw);
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 3px 12px rgba(93, 64, 55, 0.2);
+}
+
+.card-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    padding: 4px 0;
+}
+
+.card-label {
+    font-size: 0.82rem;
+    color: #8D6E63;
+    font-weight: 700;
+    flex-shrink: 0;
+    font-family: var(--font-body);
+}
+
+.card-chips {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 1;
+}
+
+.card-chips::-webkit-scrollbar { display: none; }
+
+.card-chip {
+    border: 2px solid #F0E6D9;
+    background: #fff;
+    color: #8D6E63;
+    border-radius: 16px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-family: var(--font-body);
+    white-space: nowrap;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.card-chip.active {
+    border-color: #FF6B6B;
+    background: #FFF0EE;
+    color: #E53935;
+    font-weight: 700;
+}
+
+.card-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+    padding-top: 6px;
+}
+
+.card-actions .picker-action { flex: 1; }

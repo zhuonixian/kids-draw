@@ -44,6 +44,15 @@ const Gallery = {
             App.showToast('已开始下载');
         });
 
+        // 做成贺卡：把当前预览的作品送进贺卡工坊
+        document.getElementById('lightbox-card').addEventListener('click', () => {
+            const record = ArtworkStore.list().find(r => r.id === this._currentId);
+            if (!record) return;
+            if (typeof CardMaker === 'undefined') return;
+            this._closeLightbox();
+            CardMaker.open(record);
+        });
+
         const delBtn = document.getElementById('lightbox-delete');
         if (delBtn) {
             this._deleteLabel = delBtn.textContent;

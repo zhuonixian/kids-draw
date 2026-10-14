@@ -71,6 +71,29 @@ const FreeCanvas = {
 
     bgColors: ['#FFFFFF', '#FFF8E7', '#F0F4FF', '#FDE8E8', '#E8F5E9', '#FFF3E0', '#F3E5F5', '#E0F7FA'],
 
+    // 灵感骰子点子池（场景 × 贴纸 × 画笔 × 对称 的组合灵感）
+    ideas: [
+        '在海底场景放一群小鱼贴纸 🐟',
+        '用万花筒画一朵大花 🌸',
+        '给小粉猪画一栋房子 🏠',
+        '用荧光笔在太空画星星 ✨',
+        '画一场彩虹色的雨 🌈',
+        '在草地场景放 5 只小动物 🐰',
+        '用左右对称画一只蝴蝶 🦋',
+        '画一个大太阳和向日葵贴纸 🌻',
+        '在雪地场景画一个雪人 ⛄',
+        '用喷雾笔画一场烟火 🎆',
+        '给妈妈画一串爱心 ❤️',
+        '画一辆会飞的小汽车 🚗',
+        '用彩虹笔写自己的名字 ✏️',
+        '在海底放一只戴帽子的章鱼 🐙',
+        '画一只长颈鹿在吃云朵 🦒',
+        '用发光笔画夜晚的萤火虫 🌟',
+        '给恐龙贴纸画一座火山 🌋',
+        '在太空放一队小外星人 👽'
+    ],
+    _lastIdea: null,
+
     onEnter() {
         this.canvas = document.getElementById('freecanvas-canvas');
         this.ctx = this.canvas.getContext('2d');
@@ -207,6 +230,17 @@ const FreeCanvas = {
         // 小画家任务按钮
         const missionBtn = document.getElementById('fc-missions');
         if (missionBtn) missionBtn.onclick = () => Missions.openPanel();
+
+        // 灵感骰子：随机一条创作点子（避免连续重复）
+        const ideaBtn = document.getElementById('fc-idea');
+        if (ideaBtn) {
+            ideaBtn.onclick = () => {
+                const pool = this.ideas.filter(i => i !== this._lastIdea);
+                const idea = pool[Math.floor(Math.random() * pool.length)];
+                this._lastIdea = idea;
+                App.showToast('🎲 ' + idea, 3400);
+            };
+        }
     },
 
     // === 选择弹层（贴纸/图形/场景） ===
