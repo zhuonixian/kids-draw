@@ -58,6 +58,12 @@ const App = {
         const unlock = () => this.unlockAudio();
         document.addEventListener('touchstart', unlock, { passive: true });
         document.addEventListener('pointerdown', unlock, { passive: true });
+        // iOS 切后台/锁屏后 AudioContext 会回到 suspended，回前台时先尝试恢复
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && this.audioCtx && this.audioCtx.state === 'suspended') {
+                this.audioCtx.resume().catch(() => {});
+            }
+        });
     },
 
     // 绑定首页按钮
@@ -152,14 +158,17 @@ const App = {
 
     _getAudioCtx() {
         if (!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+        if (this.audioCtx.state === 'suspended') this.audioCtx.resume().catch(() => {});
         return this.audioCtx;
     },
 
     unlockAudio() {
-        if (this._audioUnlocked) return;
+        // 不做一次性短路：iOS 回前台后 ctx 可能重新 suspended，
+        // 每次手势都确保 running（suspended 时播任何音效都无声）
         try {
             const ctx = this._getAudioCtx();
+            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+            if (this._audioUnlocked) return;
             const gain = ctx.createGain();
             gain.gain.value = 0.0001;
             const osc = ctx.createOscillator();
@@ -168,7 +177,7 @@ const App = {
             gain.connect(ctx.destination);
             osc.start();
             osc.stop(ctx.currentTime + 0.02);
-            this._audioUnlocked = true;
+            if (ctx.state === 'running') this._audioUnlocked = true;
         } catch (e) {
             // 等下一次用户手势再试。
         }
@@ -243,14 +252,14 @@ const App = {
                 this._noise(0.032, 0.12, 'highpass', 3800, 0.7);
                 break;
             case 'marker': // 湿润顺滑：低频长摩擦
-                this._noise(0.095, 0.15, 'lowpass', 750, 0.7);
+                this._noise(0.095, 0.2, 'lowpass', 750, 0.7);
                 this._tone(170 + Math.random() * 40, 0.05, 'sine', 0.028);
                 break;
             case 'brush': // 毛笔软刷：中频带通
                 this._noise(0.085, 0.16, 'bandpass', 620, 1.1);
                 break;
             case 'highlighter': // 轻滑
-                this._noise(0.07, 0.11, 'lowpass', 1400, 0.7);
+                this._noise(0.07, 0.15, 'lowpass', 1400, 0.7);
                 break;
             case 'spray': // 气体嘶嘶
                 this._noise(0.075, 0.14, 'highpass', 4600, 0.6);
@@ -269,19 +278,19 @@ const App = {
     },
 
     playStickerSound() {
-        this._tone(392, 0.055, 'sine', 0.12);
-        this._tone(784, 0.11, 'sine', 0.10, 0.045);
+        this._tone(392, 0.055, 'sine', 0.2);
+        this._tone(784, 0.11, 'sine', 0.16, 0.045);
     },
 
     playFillSound() {
-        this._tone(523, 0.06, 'sine', 0.10);
-        this._tone(659, 0.08, 'sine', 0.09, 0.04);
+        this._tone(523, 0.06, 'sine', 0.18);
+        this._tone(659, 0.08, 'sine', 0.15, 0.04);
     },
 
     // 鼓励音效：轻快的上行双音
     playEncourageSound() {
-        this._tone(659, 0.09, 'sine', 0.10);
-        this._tone(880, 0.12, 'sine', 0.10, 0.09);
+        this._tone(659, 0.09, 'sine', 0.18);
+        this._tone(880, 0.12, 'sine', 0.16, 0.09);
     },
 
     // 庆祝动画（撒花/星星）

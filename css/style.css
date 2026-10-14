@@ -1819,3 +1819,13 @@ html, body {
 }
 
 .card-actions .picker-action { flex: 1; }
+
+
+/* 音效排查小提示 */
+.parent-hint {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.68rem;
+    color: #C0392B;
+    line-height: 1.5;
+}
