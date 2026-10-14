@@ -70,6 +70,23 @@ assert(
     'FreeCanvas should support placing and rendering sticker objects.'
 );
 assert(
+    index.includes('id="sticker-action-bar"') && freecanvas.includes('_stickerAction')
+        && ['zoomin', 'zoomout', 'rotate', 'copy', 'delete'].every(act => freecanvas.includes(`'${act}'`)),
+    'FreeCanvas should expose a selected-sticker action bar with zoom, rotate, copy, and delete.'
+);
+assert(
+    freecanvas.includes('_pinchStart') && freecanvas.includes('_pinchMove') && freecanvas.includes('touchcancel'),
+    'FreeCanvas should support two-finger pinch-to-scale and pinch-to-rotate on the selected sticker.'
+);
+assert(
+    freecanvas.includes('rotation') && freecanvas.includes('ctx.rotate'),
+    'Placed stickers should render with rotation support.'
+);
+assert(
+    freecanvas.includes('_getRecent') && freecanvas.includes("_rememberRecent") && freecanvas.includes("'recent'"),
+    'Sticker panel should surface a persistent recent-stickers tab.'
+);
+assert(
     app.includes('playDrawSound') && app.includes('playStickerSound') && app.includes('playFillSound'),
     'App should expose drawing, sticker, and fill sound effects.'
 );

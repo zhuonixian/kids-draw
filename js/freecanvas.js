@@ -13,6 +13,8 @@ const FreeCanvas = {
     currentStickerId: 'piggy',
     currentStickerCategory: 'friends',
     stickerImages: {},
+    // 最近使用的贴纸 id（持久化，"最近"分类 tab 用；null = 未加载）
+    _recentIds: null,
 
     objects: [],
     currentStroke: null,
@@ -66,6 +68,7 @@ const FreeCanvas = {
             if (p) p.classList.remove('open');
         });
         this._disarmClear();
+        this._pinch = null; // 手势状态复位（防止切场景后残留）
         this._updateUndoBtn();
         this._resizeCanvas();
         this._preloadStickers();
@@ -167,6 +170,11 @@ const FreeCanvas = {
         if (clearBtn) clearBtn.onclick = () => this._handleClear(clearBtn);
         const backBtn = document.querySelector('.action-tools .btn-back');
         if (backBtn) backBtn.onclick = () => App.showScene('home');
+
+        // 贴纸操作条按钮
+        document.querySelectorAll('#sticker-action-bar .sab-btn').forEach(btn => {
+            btn.onclick = () => this._stickerAction(btn.dataset.act);
+        });
     },
 
     // === 选择弹层（贴纸/图形） ===
@@ -187,20 +195,28 @@ const FreeCanvas = {
 
     _renderStickerPanel() {
         if (typeof StickerLibrary === 'undefined') return;
-        // 分类 tabs
+        // 分类 tabs（有最近记录时"最近"置顶）
         const tabsEl = document.getElementById('sticker-tabs');
         tabsEl.innerHTML = '';
+        const tabs = [];
+        if (this._getRecent().length) tabs.push(['recent', '最近']);
         Object.keys(StickerLibrary.categories).forEach(cat => {
+            tabs.push([cat, (StickerLibrary.categories[cat] && StickerLibrary.categories[cat].label) || cat]);
+        });
+        tabs.forEach(([cat, label]) => {
             const tab = document.createElement('button');
             tab.className = 'picker-tab' + (cat === this.currentStickerCategory ? ' active' : '');
-            tab.textContent = (StickerLibrary.categories[cat] && StickerLibrary.categories[cat].label) || cat;
+            tab.textContent = label;
             tab.onclick = () => { this.currentStickerCategory = cat; this._renderStickerPanel(); };
             tabsEl.appendChild(tab);
         });
         // 贴纸网格
         const gridEl = document.getElementById('sticker-grid');
         gridEl.innerHTML = '';
-        StickerLibrary.byCategory(this.currentStickerCategory).forEach(sticker => {
+        const items = this.currentStickerCategory === 'recent'
+            ? this._getRecent().map(id => StickerLibrary.items.find(it => it.id === id)).filter(Boolean)
+            : StickerLibrary.byCategory(this.currentStickerCategory);
+        items.forEach(sticker => {
             const item = document.createElement('button');
             item.className = 'picker-item' + (sticker.id === this.currentStickerId ? ' active' : '');
             item.title = sticker.name;
@@ -274,6 +290,7 @@ const FreeCanvas = {
         this._cacheDirty = true;
         this.redraw();
         this._updateUndoBtn();
+        this._updateActionBar();
     },
 
     // === 清空（二次确认防误触） ===
@@ -287,6 +304,7 @@ const FreeCanvas = {
             this.panX = 0; this.panY = 0;
             this._cacheDirty = true;
             this.redraw();
+            this._updateActionBar();
             App.showToast('已清空');
             return;
         }
@@ -358,6 +376,7 @@ const FreeCanvas = {
     _updateHighlight() {
         document.querySelectorAll('.fc-toolbar .tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === this.currentTool));
         document.querySelectorAll('.fc-toolbar .brush-type-btn').forEach(b => b.classList.toggle('active', this.currentTool === 'brush' && b.dataset.type === this.brushType));
+        this._updateActionBar(); // 切走贴纸工具时收起操作条
     },
 
     // === 事件 ===
@@ -365,9 +384,24 @@ const FreeCanvas = {
         this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); this._handleStart(e); }, { passive: false });
         this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); this._handleMove(e); }, { passive: false });
         this.canvas.addEventListener('touchend', (e) => { e.preventDefault(); this._handleEnd(); }, { passive: false });
+        this.canvas.addEventListener('touchcancel', () => { if (this._pinch) this._pinchEnd(); }, { passive: false });
         this.canvas.addEventListener('mousedown', (e) => this._handleStart(e));
         this.canvas.addEventListener('mousemove', (e) => this._handleMove(e));
         this.canvas.addEventListener('mouseup', () => this._handleEnd());
+        // 滚轮缩放选中贴纸（桌面端；一次滚动连击合并为一条撤销记录）
+        this.canvas.addEventListener('wheel', (e) => {
+            const s = this._selectedObj;
+            if (this.currentTool !== 'sticker' || !s || s.type !== 'sticker') return;
+            e.preventDefault();
+            if (!this._wheelSnap) this._wheelSnap = JSON.parse(JSON.stringify(this.objects));
+            s.size = Math.min(280, Math.max(24, s.size * (e.deltaY < 0 ? 1.12 : 0.89)));
+            this._cacheDirty = true;
+            this.redraw();
+            clearTimeout(this._wheelTimer);
+            this._wheelTimer = setTimeout(() => {
+                if (this._wheelSnap) { this._pushSnapshot(this._wheelSnap); this._wheelSnap = null; }
+            }, 600);
+        }, { passive: false });
         // 同 tracing：拖出画布松开时在 window 兜底，防止悬停继续作画
         window.addEventListener('mouseup', () => { if (this._isDrawing || this._panStart) this._handleEnd(); });
     },
@@ -386,6 +420,8 @@ const FreeCanvas = {
             this._panPanStart = { x: this.panX, y: this.panY };
             return;
         }
+        // 双指落在画布：对选中贴纸捏合缩放+旋转（无选中时不响应，兼防误画）
+        if (e.touches && e.touches.length >= 2) { this._pinchStart(e); return; }
         if (this.currentTool === 'fill') { this._doFill(pos); return; }
         if (this.currentTool === 'sticker') { this._stickerStart(pos); return; }
         if (this.currentTool === 'shape') { this._placeShape(pos); return; }
@@ -393,6 +429,7 @@ const FreeCanvas = {
     },
 
     _handleMove(e) {
+        if (this._pinch && e.touches && e.touches.length >= 2) { this._pinchMove(e); return; }
         if (this.currentTool === 'pan' && this._panStart) {
             const s = e.touches ? e.touches[0] : e;
             this.panX = this._panPanStart.x + (s.clientX - this._panStart.x);
@@ -420,9 +457,106 @@ const FreeCanvas = {
     },
 
     _handleEnd() {
+        if (this._pinch) { this._pinchEnd(); return; }
         if (this.currentTool === 'pan') { this._panStart = null; return; }
         if (this.currentTool === 'sticker') { this._stickerEnd(); return; }
         this._endStroke();
+    },
+
+    // === 双指捏合：选中贴纸缩放 + 旋转 ===
+    _pinchStart(e) {
+        const s = this._selectedObj;
+        if (!s || s.type !== 'sticker') return;
+        // 接管手势：取消可能进行中的单指拖动
+        this._draggingObj = null;
+        this._dragMoved = false;
+        this._dragSnapshot = null;
+        this._tapDelete = false;
+        const [a, b] = [e.touches[0], e.touches[1]];
+        this._pinch = {
+            snapshot: JSON.parse(JSON.stringify(this.objects)),
+            startDist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+            startAngle: Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX),
+            startSize: s.size,
+            startRot: s.rotation || 0,
+            moved: false
+        };
+    },
+
+    _pinchMove(e) {
+        const s = this._selectedObj;
+        if (!s) { this._pinch = null; return; }
+        const [a, b] = [e.touches[0], e.touches[1]];
+        const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        const angle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX);
+        const scale = dist / (this._pinch.startDist || 1);
+        const next = Math.min(280, Math.max(24, this._pinch.startSize * scale));
+        const nextRot = this._pinch.startRot + (angle - this._pinch.startAngle) * 180 / Math.PI;
+        if (Math.abs(next - s.size) > 0.5 || Math.abs(nextRot - (s.rotation || 0)) > 0.5) this._pinch.moved = true;
+        s.size = next;
+        s.rotation = nextRot;
+        this._cacheDirty = true;
+        if (!this._pending) { this._pending = true; requestAnimationFrame(() => { this.redraw(); this._pending = false; }); }
+    },
+
+    _pinchEnd() {
+        if (this._pinch && this._pinch.moved) this._pushSnapshot(this._pinch.snapshot); // 整个手势一条撤销记录
+        this._pinch = null;
+    },
+
+    // === 最近使用的贴纸（Settings 持久化，最多 16 个） ===
+    _getRecent() {
+        if (!this._recentIds) {
+            const saved = (typeof Settings !== 'undefined') ? Settings.get('recentStickers', []) : [];
+            this._recentIds = Array.isArray(saved) ? saved.filter(id => typeof id === 'string') : [];
+        }
+        return this._recentIds;
+    },
+
+    _rememberRecent(id) {
+        const list = this._getRecent().filter(x => x !== id);
+        list.unshift(id);
+        if (list.length > 16) list.length = 16;
+        this._recentIds = list;
+        if (typeof Settings !== 'undefined') Settings.set('recentStickers', list);
+    },
+
+    // === 贴纸操作条（选中贴纸后浮现：放大/缩小/旋转/复制/删除） ===
+    _updateActionBar() {
+        const bar = document.getElementById('sticker-action-bar');
+        if (!bar) return;
+        const show = !!(this._selectedObj && this._selectedObj.type === 'sticker' && this.currentTool === 'sticker');
+        bar.classList.toggle('open', show);
+    },
+
+    _stickerAction(act) {
+        const s = this._selectedObj;
+        if (!s || s.type !== 'sticker') return;
+        // 缩放/旋转连按合并为一次撤销（同一对象同一动作 900ms 内不重复入栈）
+        const now = Date.now();
+        const coalesce = ['zoomin', 'zoomout', 'rotate'].includes(act)
+            && this._lastAct && this._lastAct.act === act && this._lastAct.obj === s && (now - this._lastAct.t) < 900;
+        if (!coalesce) this._pushHistory();
+        this._lastAct = { act, obj: s, t: now };
+
+        if (act === 'delete') {
+            const idx = this.objects.indexOf(s);
+            if (idx >= 0) this.objects.splice(idx, 1);
+            this._selectedObj = null;
+        } else if (act === 'zoomin' || act === 'zoomout') {
+            s.size = Math.min(280, Math.max(24, s.size * (act === 'zoomin' ? 1.25 : 0.8)));
+        } else if (act === 'rotate') {
+            s.rotation = ((s.rotation || 0) + 15) % 360;
+        } else if (act === 'copy') {
+            const copy = JSON.parse(JSON.stringify(s));
+            copy.x += 28;
+            copy.y += 28;
+            this.objects.push(copy);
+            this._selectedObj = copy; // 复制后选中新副本，可继续摆放
+        }
+        this._cacheDirty = true;
+        this.redraw();
+        this._updateActionBar();
     },
 
     // === 贴纸选中 / 拖动 / 删除 ===
@@ -450,12 +584,14 @@ const FreeCanvas = {
                 this._selectedObj = hit;
                 this.redraw();
             }
+            this._updateActionBar();
             return;
         }
         if (this._selectedObj) {
             // 空白处且已有选中 → 仅取消选中
             this._selectedObj = null;
             this.redraw();
+            this._updateActionBar();
             return;
         }
         // 空白处且无选中 → 放置新贴纸
@@ -482,6 +618,7 @@ const FreeCanvas = {
         this._dragMoved = false;
         this._dragSnapshot = null;
         this._tapDelete = false;
+        this._updateActionBar();
     },
 
     // === 笔画 ===
@@ -517,11 +654,13 @@ const FreeCanvas = {
     },
 
     _placeSticker(pos) {
-        const obj = { type: 'sticker', stickerId: this.currentStickerId, x: pos.x, y: pos.y, size: this.shapeSize * 1.6 };
+        const obj = { type: 'sticker', stickerId: this.currentStickerId, x: pos.x, y: pos.y, size: this.shapeSize * 1.6, rotation: 0 };
         this.objects.push(obj);
         this._selectedObj = obj; // 新贴纸默认选中：再点一下删除，按住可拖动
+        this._rememberRecent(this.currentStickerId);
         this._cacheDirty = true;
         this.redraw();
+        this._updateActionBar();
         if (typeof App !== 'undefined' && App.playStickerSound) App.playStickerSound();
     },
 
@@ -597,7 +736,13 @@ const FreeCanvas = {
         const size = s.size;
         if (img && img.complete && img.naturalWidth) {
             ctx.save();
-            ctx.drawImage(img, s.x - size, s.y - size, size * 2, size * 2);
+            if (s.rotation) {
+                ctx.translate(s.x, s.y);
+                ctx.rotate(s.rotation * Math.PI / 180);
+                ctx.drawImage(img, -size, -size, size * 2, size * 2);
+            } else {
+                ctx.drawImage(img, s.x - size, s.y - size, size * 2, size * 2);
+            }
             ctx.restore();
             return;
         }

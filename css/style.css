@@ -1486,3 +1486,51 @@ html, body {
     font-size: 0.7rem;
     letter-spacing: 1px;
 }
+
+/* === 贴纸操作条（选中贴纸后浮现） === */
+.sticker-action-bar {
+    position: absolute;
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    display: flex;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 27px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 4px 16px rgba(93, 64, 55, 0.22);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s, transform 0.18s;
+    z-index: 30;
+}
+
+.sticker-action-bar.open {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+}
+
+.sab-btn {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FFF3E0;
+    color: #8D6E63;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.sab-btn:active {
+    transform: scale(0.88);
+}
+
+.sab-btn[data-act="zoomin"] { background: #E8F5E9; color: #43A047; }
+.sab-btn[data-act="zoomout"] { background: #E3F2FD; color: #1E88E5; }
+.sab-btn[data-act="rotate"] { background: #F3E5F5; color: #8E24AA; }
+.sab-btn[data-act="copy"] { background: #FFF8E1; color: #F9A825; }
+.sab-btn.sab-danger { background: #FFEBEE; color: #E53935; }

@@ -134,6 +134,24 @@
     <!-- 自由画布场景 -->
     <div id="freecanvas" class="scene">
         <canvas id="freecanvas-canvas"></canvas>
+        <!-- 选中贴纸后的操作条：放大/缩小/旋转/复制/删除 -->
+        <div class="sticker-action-bar" id="sticker-action-bar">
+            <button class="sab-btn" data-act="zoomin" title="放大" aria-label="放大贴纸">
+                <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="2" fill="none"/><path d="M15.2 15.2 L21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M10 7.2 V12.8 M7.2 10 H12.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <button class="sab-btn" data-act="zoomout" title="缩小" aria-label="缩小贴纸">
+                <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="2" fill="none"/><path d="M15.2 15.2 L21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M7.2 10 H12.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <button class="sab-btn" data-act="rotate" title="旋转" aria-label="旋转贴纸">
+                <svg viewBox="0 0 24 24" width="22" height="22"><path d="M19.5 12 A7.5 7.5 0 1 1 12 4.5" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M12 1.5 L16 4.5 L12 7.5 Z" fill="currentColor"/></svg>
+            </button>
+            <button class="sab-btn" data-act="copy" title="复制" aria-label="复制贴纸">
+                <svg viewBox="0 0 24 24" width="22" height="22"><rect x="8" y="8" width="12" height="12" rx="2.5" stroke="currentColor" stroke-width="2" fill="none"/><path d="M16 5 H6.5 A2.5 2.5 0 0 0 4 7.5 V17" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+            </button>
+            <button class="sab-btn sab-danger" data-act="delete" title="删除" aria-label="删除贴纸">
+                <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4.5 6.5 H19.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M9 6.5 V4.5 A1.5 1.5 0 0 1 10.5 3 H13.5 A1.5 1.5 0 0 1 15 4.5 V6.5" stroke="currentColor" stroke-width="2" fill="none"/><path d="M6.5 6.5 L7.5 19.5 A1.5 1.5 0 0 0 9 21 H15 A1.5 1.5 0 0 0 16.5 19.5 L17.5 6.5" stroke="currentColor" stroke-width="2" fill="none"/><path d="M10 10.5 V17 M14 10.5 V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+        </div>
         <div class="fc-toolbar">
             <!-- 工具 -->
             <div class="tool-group">
