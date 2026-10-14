@@ -7,6 +7,7 @@ const FreeCanvas = {
     currentColor: '#FF6B6B',
     brushSize: 16,
     brushType: 'crayon',
+    _lastPaintBrush: 'crayon', // 橡皮擦切回画笔时恢复的最近画笔类型
     currentTool: 'sticker',
     bgColor: '#FFFFFF',
     shapeSize: 40, // 图形大小
@@ -142,12 +143,35 @@ const FreeCanvas = {
         if (!cc.children.length) createColorPicker('freecanvas-colors', (hex) => { this.currentColor = hex; });
 
         // 工具按钮（贴纸/图形工具额外打开对应选择弹层；场景只开面板不切工具）
+        // 点击时 toast 名称+用法说明
         document.querySelectorAll('.fc-toolbar .tool-btn').forEach(btn => {
             btn.onclick = () => {
-                if (btn.dataset.tool === 'scene') { this._togglePanel('scene-panel'); return; }
+                if (btn.dataset.tool === 'scene') {
+                    App.showToast('🏞 场景：换一个画画的背景，海底太空任你选', 1600);
+                    this._togglePanel('scene-panel');
+                    return;
+                }
                 this.currentTool = btn.dataset.tool;
-                if (btn.dataset.type === 'eraser') this.brushType = 'eraser';
+                if (btn.dataset.type === 'eraser') {
+                    this.brushType = 'eraser';
+                } else if (btn.dataset.tool === 'brush' && this.brushType === 'eraser') {
+                    this.brushType = this._lastPaintBrush || 'crayon'; // 从橡皮切回画笔：恢复上次画笔，不再粘连
+                }
+                if (this.currentTool !== 'sticker' && this._selectedObj) {
+                    this._selectedObj = null; // 切走贴纸工具：清掉选中虚线圈
+                    this._cacheDirty = true;
+                    this.redraw();
+                }
                 this._updateHighlight();
+                const tips = {
+                    brush: '✏️ 画笔：在画布上拖动画画',
+                    eraser: '🧽 橡皮擦：擦掉画错的地方',
+                    shape: '⬠ 图形：选一个图形放到画布上，再用填充涂色',
+                    sticker: '⭐ 贴纸：选一个贴纸，回到画布点一下放下',
+                    fill: '🎨 填充：点一下图形，给它涂上颜色',
+                    pan: '🖐 拖动画布：移动画布，看其他地方'
+                };
+                App.showToast(tips[btn.dataset.type === 'eraser' ? 'eraser' : btn.dataset.tool] || '', 1600);
                 if (btn.dataset.tool === 'sticker') this._togglePanel('sticker-panel');
                 else if (btn.dataset.tool === 'shape') this._togglePanel('shape-panel');
             };
@@ -158,8 +182,20 @@ const FreeCanvas = {
             btn.onclick = () => {
                 if (btn.id === 'fc-symmetry') return; // 对称按钮走独立循环切换
                 this.brushType = btn.dataset.type;
+                this._lastPaintBrush = btn.dataset.type;
                 this.currentTool = 'brush';
                 this._updateHighlight();
+                const brushTips = {
+                    crayon: '🖍 彩笔：经典蜡笔质感',
+                    marker: '🖊 马克笔：半透明宽笔触',
+                    brush: '🖌 毛笔：柔软书法笔',
+                    highlighter: '🖍 荧光笔：宽扁半透明，涂重点',
+                    rainbow: '🌈 彩虹笔：一笔画出七彩颜色',
+                    spray: '💨 喷雾：喷出彩色小点点',
+                    glow: '✨ 发光笔：夜晚霓虹光效果',
+                    dotted: '▪️ 虚线笔：可爱的虚线条'
+                };
+                App.showToast(brushTips[btn.dataset.type] || '', 1600);
             };
         });
 
@@ -621,7 +657,12 @@ const FreeCanvas = {
     },
 
     _updateHighlight() {
-        document.querySelectorAll('.fc-toolbar .tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === this.currentTool));
+        document.querySelectorAll('.fc-toolbar .tool-btn').forEach(b => {
+            let on = b.dataset.tool === this.currentTool;
+            // 画笔/橡皮擦同 data-tool=brush：按 brushType 互斥高亮，避免两钮同时亮
+            if (b.dataset.tool === 'brush') on = this.currentTool === 'brush' && (b.dataset.type === 'eraser') === (this.brushType === 'eraser');
+            b.classList.toggle('active', on);
+        });
         document.querySelectorAll('.fc-toolbar .brush-type-btn').forEach(b => b.classList.toggle('active', this.currentTool === 'brush' && b.dataset.type === this.brushType));
         // 对称按钮独立高亮（无 data-type，上面会被清掉）
         const symBtn = document.getElementById('fc-symmetry');
