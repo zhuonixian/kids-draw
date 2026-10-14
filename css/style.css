@@ -1411,7 +1411,7 @@ html, body {
 }
 
 .celebration.active {
-    pointer-events: auto;
+    pointer-events: none; /* 撒花是纯视觉层：庆祝期间画布仍可继续操作 */
 }
 
 .star {
@@ -1569,4 +1569,168 @@ html, body {
     font-size: 0.8rem;
     color: #8D6E63;
     font-family: var(--font-body);
+}
+
+/* === 小画家任务 === */
+.btn-mission { position: relative; }
+
+.mission-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 20px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #FF6B6B;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(229, 57, 53, 0.4);
+}
+
+.mission-badge.all-done {
+    background: #43A047;
+    min-width: 16px;
+}
+
+.mission-list {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 2px;
+}
+
+.mission-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: #FFFDF7;
+    box-shadow: 0 1px 4px rgba(93, 64, 55, 0.1);
+}
+
+.mission-item.current {
+    background: #FFF3E0;
+    box-shadow: 0 2px 8px rgba(255, 138, 80, 0.25);
+}
+
+.mission-item.done {
+    background: #F1F8F2;
+    opacity: 0.85;
+}
+
+.mission-item.locked {
+    opacity: 0.45;
+}
+
+.mission-icon {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+    width: 40px;
+    text-align: center;
+}
+
+.mission-body { flex: 1; min-width: 0; }
+
+.mission-title {
+    font-family: var(--font-body);
+    font-size: 0.92rem;
+    color: #5D4037;
+    font-weight: 700;
+}
+
+.mission-desc {
+    font-size: 0.75rem;
+    color: #A1887F;
+    margin: 2px 0 5px;
+}
+
+.mission-bar {
+    height: 7px;
+    border-radius: 4px;
+    background: #F0E6D9;
+    overflow: hidden;
+}
+
+.mission-bar i {
+    display: block;
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #FFA36C, #FF6B6B);
+    transition: width 0.3s;
+}
+
+.mission-item.done .mission-bar i { background: linear-gradient(90deg, #81C784, #43A047); }
+
+.mission-count {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #8D6E63;
+    flex-shrink: 0;
+}
+
+.mission-item.done .mission-count { color: #43A047; font-size: 1rem; }
+
+.mission-summary {
+    flex-shrink: 0;
+    padding: 10px 4px 2px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #8D6E63;
+}
+
+/* === 家长中心创作报告 === */
+.parent-report {
+    background: linear-gradient(135deg, #FFF8E7, #FFF3E0);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+}
+
+.report-title {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: #5D4037;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.report-cell {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+    padding: 8px 4px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.report-cell b {
+    font-size: 1.3rem;
+    color: #FF6B6B;
+    font-family: var(--font-body);
+}
+
+.report-cell b i {
+    font-style: normal;
+    font-size: 0.8rem;
+    color: #A1887F;
+}
+
+.report-cell span {
+    font-size: 0.7rem;
+    color: #8D6E63;
 }

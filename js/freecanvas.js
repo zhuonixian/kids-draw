@@ -83,6 +83,7 @@ const FreeCanvas = {
         this._disarmClear();
         this._pinch = null; // 手势状态复位（防止切场景后残留）
         this._updateUndoBtn();
+        if (typeof Missions !== 'undefined') { Missions.updateBadge(); Missions.hintCurrent(); }
         this._resizeCanvas();
         this._preloadStickers();
         this._initUI();
@@ -202,6 +203,10 @@ const FreeCanvas = {
         document.querySelectorAll('#sticker-action-bar .sab-btn').forEach(btn => {
             btn.onclick = () => this._stickerAction(btn.dataset.act);
         });
+
+        // 小画家任务按钮
+        const missionBtn = document.getElementById('fc-missions');
+        if (missionBtn) missionBtn.onclick = () => Missions.openPanel();
     },
 
     // === 选择弹层（贴纸/图形/场景） ===
@@ -210,7 +215,7 @@ const FreeCanvas = {
         if (!panel) return;
         const wasOpen = panel.classList.contains('open');
         // 先收起所有弹层（再次点击同工具 = 仅关闭，保留工具）
-        ['sticker-panel', 'shape-panel', 'scene-panel'].forEach(pid => {
+        ['sticker-panel', 'shape-panel', 'scene-panel', 'mission-panel'].forEach(pid => {
             const p = document.getElementById(pid);
             if (p) p.classList.remove('open');
         });
@@ -307,6 +312,7 @@ const FreeCanvas = {
                 this.canvasScene = key === 'none' ? null : key;
                 this._cacheDirty = true;
                 this.redraw();
+                if (key !== 'none' && typeof Missions !== 'undefined') Missions.bump('scene', { key });
                 const panel = document.getElementById('scene-panel');
                 if (panel) panel.classList.remove('open');
                 App.showToast(key === 'none' ? '回到白画布啦' : `欢迎来到${sc.label} 🎨`);
@@ -517,6 +523,7 @@ const FreeCanvas = {
         const record = ArtworkStore.save(this.canvas, { scene: 'freecanvas', name: '自由画作' });
         if (record) {
             App.showToast('作品已保存 🎉');
+            if (typeof Missions !== 'undefined') Missions.bump('save');
             if (App.playStickerSound) App.playStickerSound();
         } else {
             App.showToast('保存失败，稍后再试');
@@ -739,12 +746,14 @@ const FreeCanvas = {
             s.size = Math.min(280, Math.max(24, s.size * (act === 'zoomin' ? 1.25 : 0.8)));
         } else if (act === 'rotate') {
             s.rotation = ((s.rotation || 0) + 15) % 360;
+            if (typeof Missions !== 'undefined') Missions.bump('rotate');
         } else if (act === 'copy') {
             const copy = JSON.parse(JSON.stringify(s));
             copy.x += 28;
             copy.y += 28;
             this.objects.push(copy);
             this._selectedObj = copy; // 复制后选中新副本，可继续摆放
+            if (typeof Missions !== 'undefined') Missions.bump('copy');
         }
         this._cacheDirty = true;
         this.redraw();
@@ -824,6 +833,8 @@ const FreeCanvas = {
             this.currentStroke.cx = r.width / 2 - this.panX;
             this.currentStroke.cy = r.height / 2 - this.panY;
         }
+        // 任务埋点：任何落笔都上报（sym/scene 由任务条件自行过滤）
+        if (typeof Missions !== 'undefined') Missions.bump('stroke', { sym: this.symmetry, scene: this.canvasScene });
         if (typeof App !== 'undefined' && App.playDrawSound) App.playDrawSound();
         this.redraw();
     },
@@ -860,6 +871,7 @@ const FreeCanvas = {
         this._cacheDirty = true;
         this.redraw();
         this._updateActionBar();
+        if (typeof Missions !== 'undefined') Missions.bump('sticker', { scene: this.canvasScene });
         if (typeof App !== 'undefined' && App.playStickerSound) App.playStickerSound();
     },
 

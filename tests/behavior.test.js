@@ -10,6 +10,9 @@ const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const stickers = fs.existsSync(path.join(root, 'js', 'stickers.js'))
     ? fs.readFileSync(path.join(root, 'js', 'stickers.js'), 'utf8')
     : '';
+const missions = fs.existsSync(path.join(root, 'js', 'missions.js'))
+    ? fs.readFileSync(path.join(root, 'js', 'missions.js'), 'utf8')
+    : '';
 const store = fs.existsSync(path.join(root, 'js', 'store.js'))
     ? fs.readFileSync(path.join(root, 'js', 'store.js'), 'utf8')
     : '';
@@ -99,6 +102,23 @@ assert(
 assert(
     freecanvas.includes('currentStroke.brushType === \'eraser\' && this._cacheCtx'),
     'Live eraser strokes should render through the offscreen cache so scene backdrops are not punched through.'
+);
+assert(
+    fs.existsSync(path.join(root, 'js', 'missions.js')) && missions.includes('const Missions') && missions.includes("bump(event"),
+    'Missions system should provide event-based progress tracking.'
+);
+assert(
+    missions.includes("'sticker'") && missions.includes("'scene'") && missions.includes("'stroke'") && missions.includes("'save'")
+        && freecanvas.includes("Missions.bump('sticker'") && freecanvas.includes("Missions.bump('stroke'"),
+    'FreeCanvas should report sticker, scene, stroke, and save events to the missions system.'
+);
+assert(
+    index.includes('id="mission-panel"') && index.includes('id="fc-missions"') && index.includes('id="parent-report"'),
+    'App should expose a missions panel, toolbar badge, and a parent-zone creation report.'
+);
+assert(
+    index.indexOf('js/missions.js') > index.indexOf('js/store.js') && index.indexOf('js/missions.js') < index.indexOf('js/freecanvas.js'),
+    'Missions should load after store and before FreeCanvas.'
 );
 assert(
     app.includes('playDrawSound') && app.includes('playStickerSound') && app.includes('playFillSound'),

@@ -98,11 +98,29 @@ const ParentZone = {
             const panel = document.getElementById('parent-panel');
             panel.hidden = false;
             panel.style.display = '';
+            this._renderReport();
             this._syncToggles();
         } else {
             App.showToast('答错了，再试试');
             this._newQuestion();
         }
+    },
+
+    // 创作小报告：本地数据聚合，让家长看到孩子的成长记录
+    _renderReport() {
+        const el = document.getElementById('parent-report');
+        if (!el) return;
+        const artworks = ArtworkStore.list().length;
+        const traced = ShapeProgress.completedCount();
+        const missionsDone = (typeof Missions !== 'undefined') ? Missions.state.done.length : 0;
+        const missionsTotal = (typeof Missions !== 'undefined') ? Missions.list.length : 0;
+        el.innerHTML = `
+            <div class="report-title">🎨 宝贝的创作小报告</div>
+            <div class="report-grid">
+                <div class="report-cell"><b>${artworks}</b><span>保存的作品</span></div>
+                <div class="report-cell"><b>${traced}</b><span>描红完成</span></div>
+                <div class="report-cell"><b>${missionsDone}<i>/${missionsTotal}</i></b><span>小任务达成</span></div>
+            </div>`;
     },
 
     // 从 Settings 读取开关状态，同步滑块样式与 aria-checked
