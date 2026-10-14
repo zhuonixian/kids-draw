@@ -193,7 +193,7 @@ const App = {
         }
     },
 
-    _noise(duration = 0.055, volume = 0.12) {
+    _noise(duration = 0.055, volume = 0.12, filterType = 'bandpass', freq = 900, Q = 0.8) {
         if (!this.soundEnabled) return;
         try {
             const ctx = this._getAudioCtx();
@@ -213,9 +213,9 @@ const App = {
             const source = ctx.createBufferSource();
             const filter = ctx.createBiquadFilter();
             const gain = ctx.createGain();
-            filter.type = 'bandpass';
-            filter.frequency.value = 900;
-            filter.Q.value = 0.8;
+            filter.type = filterType;
+            filter.frequency.value = freq;
+            filter.Q.value = Q;
             gain.gain.setValueAtTime(volume, ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
             source.buffer = buffer;
@@ -228,12 +228,41 @@ const App = {
         }
     },
 
-    playDrawSound() {
+    // 按笔型提供不同摩擦质感：蜡笔像铅笔在素描纸上沙沙、马克笔湿润顺滑、
+    // 毛笔柔软、喷雾嘶嘶；不传笔型时用通用质感（描边填色等场景）
+    playDrawSound(brushType) {
         const now = Date.now();
         if (now - this._lastDrawSound < 70) return;
         this._lastDrawSound = now;
-        this._noise(0.05, 0.11);
-        this._tone(260 + Math.random() * 90, 0.035, 'triangle', 0.045);
+        switch (brushType) {
+            case 'crayon': // 素描纸沙沙：双层高频颗粒
+                this._noise(0.05, 0.15, 'highpass', 1900, 0.7);
+                this._noise(0.032, 0.09, 'highpass', 3800, 0.7);
+                break;
+            case 'marker': // 湿润顺滑：低频长摩擦
+                this._noise(0.095, 0.11, 'lowpass', 750, 0.7);
+                this._tone(170 + Math.random() * 40, 0.05, 'sine', 0.028);
+                break;
+            case 'brush': // 毛笔软刷：中频带通
+                this._noise(0.085, 0.12, 'bandpass', 620, 1.1);
+                break;
+            case 'highlighter': // 轻滑
+                this._noise(0.07, 0.08, 'lowpass', 1400, 0.7);
+                break;
+            case 'spray': // 气体嘶嘶
+                this._noise(0.075, 0.1, 'highpass', 4600, 0.6);
+                break;
+            case 'glow': case 'rainbow': // 闪亮轻快
+                this._tone(640 + Math.random() * 220, 0.04, 'sine', 0.05);
+                this._noise(0.03, 0.05, 'highpass', 2600, 0.7);
+                break;
+            case 'eraser': // 擦纸闷响
+                this._noise(0.06, 0.13, 'lowpass', 480, 0.8);
+                break;
+            default:
+                this._noise(0.05, 0.11);
+                this._tone(260 + Math.random() * 90, 0.035, 'triangle', 0.045);
+        }
     },
 
     playStickerSound() {
@@ -325,26 +354,22 @@ function openColorWheel(activeHex, onPick) {
     if (!_colorWheel) {
         _colorWheel = document.createElement('div');
         _colorWheel.className = 'color-wheel';
-        _colorWheel.innerHTML = '<div class="color-wheel-backdrop"></div><div class="color-wheel-panel"><div class="color-wheel-center"></div></div>';
+        _colorWheel.innerHTML = '<div class="color-wheel-backdrop"></div><div class="color-wheel-panel"></div>';
         _colorWheel.querySelector('.color-wheel-backdrop').addEventListener('click', closeColorWheel);
         document.body.appendChild(_colorWheel);
     }
     const panel = _colorWheel.querySelector('.color-wheel-panel');
-    panel.querySelectorAll('.color-dot').forEach(d => d.remove());
+    panel.innerHTML = '';
 
-    // 21 色沿圆环排布，逐个延迟弹出
-    const R = 112, C = 150, DOT = 42;
+    // 大色板网格：儿童好点好选（大圆钮 + 足够间距），6 列网格铺开
     COLORS.forEach((color, i) => {
-        const angle = (i / COLORS.length) * Math.PI * 2 - Math.PI / 2;
         const dot = document.createElement('button');
         dot.type = 'button';
         dot.className = 'color-dot' + (color.hex === activeHex ? ' active' : '');
         dot.setAttribute('aria-label', color.name);
         dot.style.backgroundColor = color.hex;
         if (color.hex === '#FFFFFF' || color.hex === '#FFE066') dot.classList.add('dot-light');
-        dot.style.left = Math.round(C + R * Math.cos(angle) - DOT / 2) + 'px';
-        dot.style.top = Math.round(C + R * Math.sin(angle) - DOT / 2) + 'px';
-        dot.style.transitionDelay = (i * 14) + 'ms';
+        dot.style.transitionDelay = (i * 10) + 'ms';
         dot.addEventListener('click', () => {
             onPick(color.hex);
             closeColorWheel();
@@ -352,7 +377,6 @@ function openColorWheel(activeHex, onPick) {
         panel.appendChild(dot);
     });
 
-    _colorWheel.querySelector('.color-wheel-center').style.background = activeHex;
     _colorWheel.classList.add('open');
 }
 

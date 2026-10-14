@@ -927,7 +927,7 @@ const FreeCanvas = {
         }
         // 任务埋点：任何落笔都上报（sym/scene 由任务条件自行过滤）
         if (typeof Missions !== 'undefined') Missions.bump('stroke', { sym: this.symmetry, scene: this.canvasScene });
-        if (typeof App !== 'undefined' && App.playDrawSound) App.playDrawSound();
+        if (typeof App !== 'undefined' && App.playDrawSound) App.playDrawSound(this.brushType);
         this.redraw();
     },
     _continueStroke(p) {
@@ -935,7 +935,7 @@ const FreeCanvas = {
         const dx = p.x - this._lastPoint.x, dy = p.y - this._lastPoint.y;
         if (dx * dx + dy * dy < 2) return;
         this.currentStroke.points.push(p); this._lastPoint = p;
-        if (typeof App !== 'undefined' && App.playDrawSound) App.playDrawSound();
+        if (typeof App !== 'undefined' && App.playDrawSound) App.playDrawSound(this.brushType);
         if (!this._pending) { this._pending = true; requestAnimationFrame(() => { this.redraw(); this._pending = false; }); }
     },
     _endStroke() {
@@ -1123,11 +1123,11 @@ const FreeCanvas = {
             else { ctx.beginPath(); this._path(ctx, pts); ctx.stroke(); }
             ctx.restore(); return;
         }
-        // 荧光笔：宽扁半透明
+        // 荧光笔：宽扁半透明（低 alpha 叠涂自然加深）
         if (s.brushType === 'highlighter') {
             ctx.save();
-            ctx.globalAlpha = 0.28;
-            ctx.strokeStyle = s.color; ctx.lineWidth = s.size * 2.2;
+            ctx.globalAlpha = 0.32;
+            ctx.strokeStyle = s.color; ctx.lineWidth = s.size * 2.5;
             ctx.lineCap = 'butt'; ctx.lineJoin = 'round';
             if (pts.length === 1) { ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.size * 1.1, 0, Math.PI * 2); ctx.fill(); }
             else { ctx.beginPath(); this._path(ctx, pts); ctx.stroke(); }
@@ -1189,14 +1189,91 @@ const FreeCanvas = {
             ctx.setLineDash([]);
             ctx.restore(); return;
         }
-        // 原有画笔：crayon / marker / brush
-        ctx.save();
-        ctx.globalAlpha = s.brushType === 'marker' ? 0.35 : s.brushType === 'brush' ? 0.88 : 0.85;
-        ctx.strokeStyle = s.color; ctx.lineWidth = s.brushType === 'marker' ? s.size * 0.7 : s.size;
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        if (pts.length === 1) { ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.size / 2, 0, Math.PI * 2); ctx.fill(); }
-        else { ctx.beginPath(); this._path(ctx, pts); ctx.stroke(); }
-        ctx.restore();
+        // 蜡笔：纸面颗粒质感（确定性随机保证撤销/重绘不闪变）
+        if (s.brushType === 'crayon') {
+            ctx.save();
+            ctx.strokeStyle = s.color;
+            ctx.lineCap = 'round';
+            const rnd = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+            if (pts.length === 1) {
+                for (let k = 0; k < 5; k++) {
+                    const a = rnd(k * 3 + 1) * Math.PI * 2, rr = rnd(k * 5 + 2) * s.size * 0.4;
+                    ctx.globalAlpha = 0.4 + rnd(k + 9) * 0.4;
+                    ctx.lineWidth = s.size * (0.25 + rnd(k * 7) * 0.3);
+                    ctx.beginPath();
+                    ctx.moveTo(pts[0].x + Math.cos(a) * rr - 1, pts[0].y + Math.sin(a) * rr);
+                    ctx.lineTo(pts[0].x + Math.cos(a) * rr + 1, pts[0].y + Math.sin(a) * rr);
+                    ctx.stroke();
+                }
+            } else {
+                for (let i = 1; i < pts.length; i++) {
+                    const p0 = pts[i - 1], p1 = pts[i];
+                    const dx = p1.x - p0.x, dy = p1.y - p0.y;
+                    const len = Math.hypot(dx, dy) || 1;
+                    const nx = -dy / len, ny = dx / len;
+                    for (let k = 0; k < 3; k++) {
+                        const r1 = rnd(i * 7 + k), r2 = rnd(i * 13 + k + 41);
+                        const off = (r1 - 0.5) * s.size * 0.6;
+                        const shrink = 0.3 + r2 * 0.55;
+                        ctx.globalAlpha = 0.32 + r2 * 0.46;
+                        ctx.lineWidth = s.size * (0.26 + r1 * 0.3);
+                        ctx.beginPath();
+                        ctx.moveTo(p0.x + dx * (0.5 - shrink / 2) + nx * off, p0.y + dy * (0.5 - shrink / 2) + ny * off);
+                        ctx.lineTo(p0.x + dx * (0.5 + shrink / 2) + nx * off, p0.y + dy * (0.5 + shrink / 2) + ny * off);
+                        ctx.stroke();
+                    }
+                }
+            }
+            ctx.restore(); return;
+        }
+        // 马克笔：方头宽笔，均匀半透明，重复涂自然加深
+        if (s.brushType === 'marker') {
+            ctx.save();
+            ctx.globalAlpha = 0.38;
+            ctx.strokeStyle = s.color; ctx.lineWidth = s.size * 0.95;
+            ctx.lineCap = 'butt'; ctx.lineJoin = 'round';
+            if (pts.length === 1) { ctx.fillRect(pts[0].x - s.size * 0.48, pts[0].y - s.size * 0.2, s.size * 0.95, s.size * 0.4); }
+            else { ctx.beginPath(); this._path(ctx, pts); ctx.stroke(); }
+            ctx.restore(); return;
+        }
+        // 毛笔：笔锋随速度变化（慢粗快细，起收笔渐尖），多边形带宽填充
+        if (s.brushType === 'brush') {
+            ctx.save();
+            ctx.fillStyle = s.color;
+            ctx.globalAlpha = 0.95;
+            if (pts.length < 3) {
+                ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.size * 0.45, 0, Math.PI * 2); ctx.fill();
+            } else {
+                // 每点局部速度 → 目标宽度（越快越细）
+                const w = [];
+                for (let i = 0; i < pts.length; i++) {
+                    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+                    const v = Math.hypot(b.x - a.x, b.y - a.y);
+                    const t = Math.max(0, Math.min(1, (v - 2) / 26));
+                    w.push(s.size * 0.62 * (1.05 - t * 0.75));
+                }
+                // 三点平滑，笔锋自然
+                const sm = w.map((_, i) => (w[Math.max(0, i - 1)] + w[i] + w[Math.min(w.length - 1, i + 1)]) / 3);
+                // 端点渐尖（起笔收笔）
+                sm[0] *= 0.45; sm[sm.length - 1] *= 0.45;
+                sm[1] *= 0.8; sm[sm.length - 2] *= 0.8;
+                const up = [], dn = [];
+                for (let i = 0; i < pts.length; i++) {
+                    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+                    const dx = b.x - a.x, dy = b.y - a.y;
+                    const len = Math.hypot(dx, dy) || 1;
+                    const nx = -dy / len, ny = dx / len, hw = sm[i] / 2;
+                    up.push({ x: pts[i].x + nx * hw, y: pts[i].y + ny * hw });
+                    dn.push({ x: pts[i].x - nx * hw, y: pts[i].y - ny * hw });
+                }
+                ctx.beginPath();
+                ctx.moveTo(up[0].x, up[0].y);
+                for (let i = 1; i < up.length; i++) ctx.lineTo(up[i].x, up[i].y);
+                for (let i = dn.length - 1; i >= 0; i--) ctx.lineTo(dn[i].x, dn[i].y);
+                ctx.closePath(); ctx.fill();
+            }
+            ctx.restore(); return;
+        }
     },
 
     _path(ctx, pts) {

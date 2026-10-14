@@ -440,31 +440,39 @@ html, body {
     background: rgba(45, 52, 54, 0.25);
 }
 
+/* 大色板面板：网格铺开，儿童好点好选（大钮大间距），宽高比正确不裁切 */
 .color-wheel-panel {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 300px;
-    height: 300px;
-    margin: -150px 0 0 -150px;
-    border-radius: 50%;
-    background: rgba(255, 251, 240, 0.95);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
-    transform: scale(0.5);
+    width: min(440px, 92vw);
+    padding: 18px;
+    box-sizing: border-box;
+    border-radius: 26px;
+    background: rgba(255, 251, 240, 0.97);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    transform: translate(-50%, -50%) scale(0.6);
     opacity: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
     transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.18s;
 }
 
 .color-wheel.open .color-wheel-panel {
-    transform: scale(1);
+    transform: translate(-50%, -50%) scale(1);
     opacity: 1;
 }
 
 .color-wheel-panel .color-dot {
-    position: absolute;
-    width: 42px;
-    height: 42px;
+    position: relative;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
     transform: scale(0);
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 6px rgba(93, 64, 55, 0.25);
 }
 
 .color-wheel.open .color-wheel-panel .color-dot {

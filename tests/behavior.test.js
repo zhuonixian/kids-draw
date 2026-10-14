@@ -23,6 +23,9 @@ const parent = fs.existsSync(path.join(root, 'js', 'parent.js'))
     ? fs.readFileSync(path.join(root, 'js', 'parent.js'), 'utf8')
     : '';
 const shapesSrc = fs.readFileSync(path.join(root, 'js', 'shapes.js'), 'utf8');
+const cssSrc = fs.existsSync(path.join(root, 'css', 'style.css'))
+    ? fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8')
+    : '';
 
 assert(
     tracing.includes('maskCanvas') && tracing.includes('outlineCanvas'),
@@ -145,6 +148,18 @@ assert(
 assert(
     !freecanvas.includes("'animal'") && !freecanvas.includes("_drawWhiskers"),
     'Abstract animal doodles should be removed from the shape tool (covered by PNG stickers).'
+);
+assert(
+    freecanvas.includes('纸面颗粒质感') && freecanvas.includes('笔锋随速度变化') && freecanvas.includes('方头宽笔'),
+    'Crayon, brush, and marker strokes should render with realistic medium-specific texture.'
+);
+assert(
+    app.includes("case 'crayon'") && app.includes("case 'spray'") && app.includes("playDrawSound(brushType)"),
+    'Draw sounds should vary by brush type (paper-grain crayon, hissy spray, soft brush).'
+);
+assert(
+    cssSrc.includes('repeat(5, 1fr)') && cssSrc.includes('aspect-ratio: 1 / 1') && !app.includes('R * Math.cos(angle)'),
+    'Color picker should use a child-friendly large-dot grid, not a tight ring layout.'
 );
 assert(
     !tracing.includes('ctx.closePath(); ctx.stroke();'),
