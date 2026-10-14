@@ -229,11 +229,15 @@ const Tracing = {
         ctx.fill();
         ctx.restore();
 
+        // 全部笔画已完成：不再渲染"当前笔"（strokeIdx 已越界），
+        // 否则 pts[curStart] 取 undefined 会在脉动段抛错，卡死进入填色的定时器
+        const allDone = this._strokeIdx >= counts.length;
+
         // 当前笔已描覆盖（绿色实线，跟随真实笔迹）
         const curCnt = counts[this._strokeIdx];
         const curStart = this._partOffsets[this._strokeIdx];
         const curCovered = this._partCovered[this._strokeIdx];
-        if (this._partProgress[this._strokeIdx] > 0) {
+        if (!allDone && this._partProgress[this._strokeIdx] > 0) {
             ctx.save();
             ctx.setLineDash([]);
             ctx.lineWidth = 10;
@@ -244,12 +248,14 @@ const Tracing = {
                 if (curCovered[i]) {
                     if (runStart === null) runStart = i;
                 } else if (runStart !== null) {
+                    // 覆盖段只描实际描过的点：绝不能 closePath，
+                    // 否则分段覆盖会把段首尾直线闭合，画出穿过图形内部的"弦"
                     ctx.beginPath();
                     for (let j = runStart; j < i; j++) {
                         const p = pts[curStart + j];
                         j === runStart ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
                     }
-                    ctx.closePath(); ctx.stroke();
+                    ctx.stroke();
                     runStart = null;
                 }
             }
@@ -275,15 +281,17 @@ const Tracing = {
         }
 
         // 当前笔起点脉动
-        const dot = pts[curStart];
-        const p2 = 1 + 0.1 * Math.sin(Date.now() / 300);
-        ctx.save(); ctx.fillStyle = '#FFA36C';
-        ctx.beginPath(); ctx.arc(dot.x, dot.y, 12 * p2, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(dot.x, dot.y, 5, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
+        if (!allDone) {
+            const dot = pts[curStart];
+            const p2 = 1 + 0.1 * Math.sin(Date.now() / 300);
+            ctx.save(); ctx.fillStyle = '#FFA36C';
+            ctx.beginPath(); ctx.arc(dot.x, dot.y, 12 * p2, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(dot.x, dot.y, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
 
         // 起点脉动动画：仅当前笔尚未落笔时运行
-        if (this._partProgress[this._strokeIdx] === 0 && !this._animRunning) {
+        if (!allDone && this._partProgress[this._strokeIdx] === 0 && !this._animRunning) {
             this._animRunning = true;
             const loop = () => {
                 if (this.mode !== 'tracing' || this._partProgress[this._strokeIdx] > 0) { this._animRunning = false; return; }
@@ -322,7 +330,10 @@ const Tracing = {
             if (!covered[j]) { covered[j] = 1; this._partCoveredCount[pIdx]++; }
         };
         const last = this._lastIdx[pIdx];
-        if (last === null || Math.abs(localIdx - last) > 8) {
+        // 跳变阈值随笔画点数放宽（圆周 61 点只允许 8 点太苛刻：
+        // 手指短暂滑出容差圈再回来就会留缺口，明明描完一圈却不通过）
+        const jumpLimit = Math.max(8, cnt >> 2);
+        if (last === null || Math.abs(localIdx - last) > jumpLimit) {
             // 新落笔或大幅跳变：只标记命中点附近，不做插值
             mark(localIdx - 1); mark(localIdx); mark(localIdx + 1);
         } else {
@@ -350,12 +361,12 @@ const Tracing = {
     _advanceStroke() {
         this._strokeIdx++;
         if (this._strokeIdx >= this._partCounts.length) {
-            // 全部笔画完成 → 进入填色
+            // 全部笔画完成 → 进入填色（定时器先排：即使渲染路径出问题也不卡死流程）
             this.tracedProgress = 1;
             this._partProgress = this._partCounts.map(() => 1);
             this._animRunning = false;
-            this.redraw();
             this._startColoringTimer = setTimeout(() => this._startColoring(), 400);
+            this.redraw();
             return;
         }
         this._lastIdx[this._strokeIdx] = null;

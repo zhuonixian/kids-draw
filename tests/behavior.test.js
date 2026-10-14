@@ -137,6 +137,18 @@ assert(
     'FreeCanvas should offer an idea dice for creative prompts.'
 );
 assert(
+    !tracing.includes('ctx.closePath(); ctx.stroke();'),
+    'Covered stroke segments must not close their path: closing draws a chord across the shape when coverage splits into runs.'
+);
+assert(
+    tracing.includes('jumpLimit'),
+    'Coverage interpolation should scale its jump threshold with stroke length so brief excursions outside tolerance do not leave gaps.'
+);
+assert(
+    tracing.includes('allDone') && tracing.includes('this._strokeIdx >= counts.length'),
+    'Rendering must guard against stroke overflow when all strokes are done, or entering coloring is silently blocked by an exception.'
+);
+assert(
     app.includes('playDrawSound') && app.includes('playStickerSound') && app.includes('playFillSound'),
     'App should expose drawing, sticker, and fill sound effects.'
 );
