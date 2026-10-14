@@ -87,6 +87,20 @@ assert(
     'Sticker panel should surface a persistent recent-stickers tab.'
 );
 assert(
+    index.includes('id="fc-symmetry"') && freecanvas.includes('_symCopies')
+        && ['mirror', 'quad', 'kaleido'].every(m => freecanvas.includes(`'${m}'`)),
+    'FreeCanvas should offer mirror, four-way, and kaleidoscope symmetry painting.'
+);
+assert(
+    index.includes('id="scene-panel"') && freecanvas.includes('_drawScene') && freecanvas.includes('_renderScenePanel')
+        && ['ocean', 'space', 'meadow', 'snow'].every(sc => freecanvas.includes(`'${sc}'`)),
+    'FreeCanvas should offer ocean, space, meadow, and snow scene backdrops.'
+);
+assert(
+    freecanvas.includes('currentStroke.brushType === \'eraser\' && this._cacheCtx'),
+    'Live eraser strokes should render through the offscreen cache so scene backdrops are not punched through.'
+);
+assert(
     app.includes('playDrawSound') && app.includes('playStickerSound') && app.includes('playFillSound'),
     'App should expose drawing, sticker, and fill sound effects.'
 );

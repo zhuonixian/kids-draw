@@ -36,6 +36,19 @@ const FreeCanvas = {
     _clearArmed: false,
     _clearTimer: null,
 
+    // 对称画模式（off / mirror 左右 / quad 四向 / kaleido 万花筒）
+    symmetry: 'off',
+    // 当前场景底图（null = 纯底色）
+    canvasScene: null,
+    // 场景目录：label 面板用；emoji+css 渐变做缩略
+    scenes: {
+        none:   { label: '不用了', emoji: '🚫', css: 'linear-gradient(180deg, #FFFFFF, #F0F0F0)' },
+        ocean:  { label: '海底', emoji: '🐟', css: 'linear-gradient(180deg, #9BD7FF 65%, #FFE9B3 65%)' },
+        space:  { label: '太空', emoji: '🚀', css: 'linear-gradient(180deg, #3D3A8C 30%, #151538)' },
+        meadow: { label: '草地', emoji: '🌻', css: 'linear-gradient(180deg, #BEEBFF 60%, #A8E063 60%)' },
+        snow:   { label: '雪地', emoji: '⛄', css: 'linear-gradient(180deg, #C9E3F5 70%, #FFFFFF 70%)' }
+    },
+
     // 离屏缓存
     _cacheCanvas: null,
     _cacheCtx: null,
@@ -103,9 +116,10 @@ const FreeCanvas = {
         const cc = document.getElementById('freecanvas-colors');
         if (!cc.children.length) createColorPicker('freecanvas-colors', (hex) => { this.currentColor = hex; });
 
-        // 工具按钮（贴纸/图形工具额外打开对应选择弹层）
+        // 工具按钮（贴纸/图形工具额外打开对应选择弹层；场景只开面板不切工具）
         document.querySelectorAll('.fc-toolbar .tool-btn').forEach(btn => {
             btn.onclick = () => {
+                if (btn.dataset.tool === 'scene') { this._togglePanel('scene-panel'); return; }
                 this.currentTool = btn.dataset.tool;
                 if (btn.dataset.type === 'eraser') this.brushType = 'eraser';
                 this._updateHighlight();
@@ -117,11 +131,24 @@ const FreeCanvas = {
         // 画笔类型
         document.querySelectorAll('.fc-toolbar .brush-type-btn').forEach(btn => {
             btn.onclick = () => {
+                if (btn.id === 'fc-symmetry') return; // 对称按钮走独立循环切换
                 this.brushType = btn.dataset.type;
                 this.currentTool = 'brush';
                 this._updateHighlight();
             };
         });
+
+        // 对称画：关 → 左右 → 四向 → 万花筒 循环
+        const symBtn = document.getElementById('fc-symmetry');
+        if (symBtn) {
+            symBtn.onclick = () => {
+                const order = ['off', 'mirror', 'quad', 'kaleido'];
+                this.symmetry = order[(order.indexOf(this.symmetry) + 1) % order.length];
+                this.currentTool = 'brush';
+                this._updateHighlight();
+                App.showToast({ off: '对称：关', mirror: '左右对称 ✨', quad: '四向对称 ✨✨', kaleido: '万花筒模式 🎨' }[this.symmetry]);
+            };
+        }
 
         // 弹层大小按钮（同步 shapeSize）
         const sizeBtns = Array.from(document.querySelectorAll('#sticker-sizes .picker-size-btn'));
@@ -142,7 +169,7 @@ const FreeCanvas = {
         });
 
         // 弹层遮罩 / 返回按钮点击关闭所在弹层
-        document.querySelectorAll('#sticker-panel [data-close], #shape-panel [data-close]').forEach(el => {
+        document.querySelectorAll('.picker-panel [data-close]').forEach(el => {
             el.onclick = () => {
                 const panel = el.closest('.picker-panel');
                 if (panel) panel.classList.remove('open');
@@ -177,19 +204,20 @@ const FreeCanvas = {
         });
     },
 
-    // === 选择弹层（贴纸/图形） ===
+    // === 选择弹层（贴纸/图形/场景） ===
     _togglePanel(id) {
         const panel = document.getElementById(id);
         if (!panel) return;
         const wasOpen = panel.classList.contains('open');
         // 先收起所有弹层（再次点击同工具 = 仅关闭，保留工具）
-        ['sticker-panel', 'shape-panel'].forEach(pid => {
+        ['sticker-panel', 'shape-panel', 'scene-panel'].forEach(pid => {
             const p = document.getElementById(pid);
             if (p) p.classList.remove('open');
         });
         if (wasOpen) return;
         if (id === 'sticker-panel') this._renderStickerPanel();
-        else this._renderShapePanel();
+        else if (id === 'shape-panel') this._renderShapePanel();
+        else if (id === 'scene-panel') this._renderScenePanel();
         panel.classList.add('open');
     },
 
@@ -266,6 +294,166 @@ const FreeCanvas = {
         });
     },
 
+    _renderScenePanel() {
+        const gridEl = document.getElementById('scene-grid');
+        gridEl.innerHTML = '';
+        Object.keys(this.scenes).forEach(key => {
+            const sc = this.scenes[key];
+            const item = document.createElement('button');
+            item.className = 'picker-item scene-item' + ((this.canvasScene || 'none') === key ? ' active' : '');
+            item.title = sc.label;
+            item.innerHTML = `<span class="scene-thumb" style="background:${sc.css}">${sc.emoji}</span><span class="scene-name">${sc.label}</span>`;
+            item.onclick = () => {
+                this.canvasScene = key === 'none' ? null : key;
+                this._cacheDirty = true;
+                this.redraw();
+                const panel = document.getElementById('scene-panel');
+                if (panel) panel.classList.remove('open');
+                App.showToast(key === 'none' ? '回到白画布啦' : `欢迎来到${sc.label} 🎨`);
+            };
+            gridEl.appendChild(item);
+        });
+    },
+
+    // === 场景底图绘制（视口坐标，不随画布拖动；伪随机保证重绘一致） ===
+    _drawScene(ctx, w, h, key) {
+        const rnd = (i) => {
+            const x = Math.sin(i * 127.1 + key.length * 311.7) * 43758.5453;
+            return x - Math.floor(x);
+        };
+        ctx.save();
+
+        if (key === 'ocean') {
+            const g = ctx.createLinearGradient(0, 0, 0, h);
+            g.addColorStop(0, '#9BD7FF'); g.addColorStop(1, '#4A90D9');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+            // 沙底
+            ctx.fillStyle = '#FFE9B3';
+            ctx.beginPath(); ctx.moveTo(0, h);
+            ctx.quadraticCurveTo(w * 0.5, h - 60, w, h - 20); ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
+            // 水草
+            ctx.strokeStyle = '#6BCB77'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+            [0.12, 0.2, 0.78, 0.88].forEach((fx, i) => {
+                const bx = w * fx, by = h - 14 - rnd(i) * 16;
+                const sway = 16 + rnd(i + 9) * 14;
+                ctx.beginPath(); ctx.moveTo(bx, by);
+                ctx.quadraticCurveTo(bx - sway, by - 34, bx - sway * 0.4, by - 66 - rnd(i + 5) * 22);
+                ctx.stroke();
+            });
+            // 气泡
+            for (let i = 0; i < 12; i++) {
+                const bx = rnd(i + 30) * w, by = h * 0.2 + rnd(i + 60) * h * 0.62, br = 3 + rnd(i + 90) * 6;
+                ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 1.6;
+                ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.stroke();
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.beginPath(); ctx.arc(bx - br * 0.3, by - br * 0.3, br * 0.3, 0, Math.PI * 2); ctx.fill();
+            }
+        } else if (key === 'space') {
+            const g = ctx.createLinearGradient(0, 0, 0, h);
+            g.addColorStop(0, '#3D3A8C'); g.addColorStop(1, '#151538');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+            // 星星
+            for (let i = 0; i < 46; i++) {
+                const sx = rnd(i + 1) * w, sy = rnd(i + 50) * h, sr = 1 + rnd(i + 99) * 2.2;
+                ctx.fillStyle = i % 5 === 0 ? '#FFE9A0' : 'rgba(255,255,255,0.9)';
+                ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
+            }
+            // 带环行星
+            const px = w * 0.82, py = h * 0.24, pr = Math.min(w, h) * 0.085;
+            ctx.fillStyle = '#FD79A8';
+            ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#E8699C';
+            ctx.beginPath(); ctx.arc(px - pr * 0.28, py + pr * 0.2, pr * 0.3, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#FFD93D'; ctx.lineWidth = 5;
+            ctx.save(); ctx.translate(px, py); ctx.rotate(-0.3);
+            ctx.beginPath(); ctx.ellipse(0, 0, pr * 1.75, pr * 0.5, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+            // 小月亮
+            const mx = w * 0.14, my = h * 0.7, mr = Math.min(w, h) * 0.05;
+            ctx.fillStyle = '#FFE9B3';
+            ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ECD39A';
+            ctx.beginPath(); ctx.arc(mx - mr * 0.3, my - mr * 0.15, mr * 0.2, 0, Math.PI * 2);
+            ctx.arc(mx + mr * 0.25, my + mr * 0.3, mr * 0.14, 0, Math.PI * 2); ctx.fill();
+        } else if (key === 'meadow') {
+            const skyH = h * 0.62;
+            const g = ctx.createLinearGradient(0, 0, 0, skyH);
+            g.addColorStop(0, '#BEEBFF'); g.addColorStop(1, '#E8F7FF');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, w, skyH);
+            // 太阳
+            const sx = w * 0.16, sy = h * 0.16, sr = Math.min(w, h) * 0.06;
+            ctx.fillStyle = 'rgba(255,217,61,0.35)';
+            ctx.beginPath(); ctx.arc(sx, sy, sr * 1.7, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#FFD93D';
+            ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
+            // 云
+            ctx.fillStyle = 'rgba(255,255,255,0.92)';
+            [[0.42, 0.12], [0.7, 0.22], [0.9, 0.1]].forEach(([fx, fy], i) => {
+                const cx0 = w * fx, cy0 = h * fy + rnd(i) * 10;
+                ctx.beginPath();
+                ctx.arc(cx0, cy0, 14, 0, Math.PI * 2);
+                ctx.arc(cx0 + 18, cy0 + 4, 11, 0, Math.PI * 2);
+                ctx.arc(cx0 - 17, cy0 + 5, 10, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            // 草地（两层波浪）
+            ctx.fillStyle = '#8ED04B';
+            ctx.beginPath(); ctx.moveTo(0, skyH);
+            ctx.quadraticCurveTo(w * 0.25, skyH - 26, w * 0.5, skyH + 4);
+            ctx.quadraticCurveTo(w * 0.78, skyH + 30, w, skyH - 8);
+            ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#A8E063';
+            ctx.beginPath(); ctx.moveTo(0, h);
+            ctx.quadraticCurveTo(w * 0.3, skyH + 30, w * 0.55, skyH + 60);
+            ctx.quadraticCurveTo(w * 0.8, skyH + 86, w, skyH + 50);
+            ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
+            // 小花
+            for (let i = 0; i < 7; i++) {
+                const fx0 = 0.06 + rnd(i + 7) * 0.88, fy0 = skyH + 30 + rnd(i + 20) * (h - skyH - 44);
+                ctx.fillStyle = ['#FD79A8', '#FF6B6B', '#FFE066', '#A29BFE'][i % 4];
+                for (let p = 0; p < 5; p++) {
+                    const a = p / 5 * Math.PI * 2;
+                    ctx.beginPath();
+                    ctx.arc(fx0 * w + Math.cos(a) * 5, fy0 + Math.sin(a) * 5, 3.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.fillStyle = '#FFD93D';
+                ctx.beginPath(); ctx.arc(fx0 * w, fy0, 2.6, 0, Math.PI * 2); ctx.fill();
+            }
+        } else if (key === 'snow') {
+            const g = ctx.createLinearGradient(0, 0, 0, h);
+            g.addColorStop(0, '#C9E3F5'); g.addColorStop(1, '#F7FBFF');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+            // 远处松树
+            [[0.1, 0.52], [0.22, 0.6]].forEach(([fx, fy], i) => {
+                const tx = w * fx, ty = h * fy, ts = Math.min(w, h) * (0.07 + i * 0.015);
+                ctx.fillStyle = '#5DA98F';
+                ctx.beginPath();
+                ctx.moveTo(tx, ty - ts * 1.5); ctx.lineTo(tx + ts * 0.7, ty); ctx.lineTo(tx - ts * 0.7, ty);
+                ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.moveTo(tx, ty - ts * 1.5); ctx.lineTo(tx + ts * 0.34, ty - ts * 0.75); ctx.lineTo(tx - ts * 0.34, ty - ts * 0.75);
+                ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#8D6E63';
+                ctx.fillRect(tx - ts * 0.07, ty, ts * 0.14, ts * 0.28);
+            });
+            // 雪地
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath(); ctx.moveTo(0, h);
+            ctx.quadraticCurveTo(w * 0.3, h * 0.7, w * 0.55, h * 0.8);
+            ctx.quadraticCurveTo(w * 0.8, h * 0.9, w, h * 0.74);
+            ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
+            // 雪花
+            for (let i = 0; i < 30; i++) {
+                const fx0 = rnd(i + 3) * w, fy0 = rnd(i + 40) * h * 0.85;
+                ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                ctx.beginPath(); ctx.arc(fx0, fy0, 1.4 + rnd(i + 80) * 2, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        ctx.restore();
+    },
+
     // === 历史（快照式撤销） ===
     _pushHistory() {
         this._pushSnapshot(JSON.parse(JSON.stringify(this.objects)));
@@ -301,6 +489,7 @@ const FreeCanvas = {
             this.objects = [];
             this._selectedObj = null;
             this._draggingObj = null;
+            this.canvasScene = null; // 清空 = 回到干净画布（场景一并清掉）
             this.panX = 0; this.panY = 0;
             this._cacheDirty = true;
             this.redraw();
@@ -376,6 +565,9 @@ const FreeCanvas = {
     _updateHighlight() {
         document.querySelectorAll('.fc-toolbar .tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === this.currentTool));
         document.querySelectorAll('.fc-toolbar .brush-type-btn').forEach(b => b.classList.toggle('active', this.currentTool === 'brush' && b.dataset.type === this.brushType));
+        // 对称按钮独立高亮（无 data-type，上面会被清掉）
+        const symBtn = document.getElementById('fc-symmetry');
+        if (symBtn) symBtn.classList.toggle('active', this.symmetry !== 'off');
         this._updateActionBar(); // 切走贴纸工具时收起操作条
     },
 
@@ -625,6 +817,13 @@ const FreeCanvas = {
     _startStroke(p) {
         this._isDrawing = true; this._lastPoint = p;
         this.currentStroke = { type: 'stroke', brushType: this.brushType === 'eraser' ? 'eraser' : this.brushType, color: this.currentColor, size: this.brushType === 'eraser' ? this.brushSize * 2 : this.brushSize, points: [p] };
+        // 对称画：以落笔时的视口中心为对称轴/对称心（世界坐标），保证所见即所得
+        if (this.symmetry !== 'off') {
+            const r = this.canvas.getBoundingClientRect();
+            this.currentStroke.sym = this.symmetry;
+            this.currentStroke.cx = r.width / 2 - this.panX;
+            this.currentStroke.cy = r.height / 2 - this.panY;
+        }
         if (typeof App !== 'undefined' && App.playDrawSound) App.playDrawSound();
         this.redraw();
     },
@@ -689,6 +888,13 @@ const FreeCanvas = {
         ctx.fillStyle = this.bgColor; ctx.fillRect(0, 0, r.width, r.height);
         ctx.restore();
 
+        // 场景底图：铺满视口、不随画布拖动，画在所有内容之下
+        if (this.canvasScene && this.scenes[this.canvasScene]) {
+            ctx.save(); ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+            this._drawScene(ctx, r.width, r.height, this.canvasScene);
+            ctx.restore();
+        }
+
         if (this._cacheDirty && this._cacheCtx) {
             const cc = this._cacheCtx;
             cc.clearRect(0, 0, this._cacheCanvas.width, this._cacheCanvas.height);
@@ -705,10 +911,24 @@ const FreeCanvas = {
         }
 
         if (this.currentStroke) {
-            ctx.save();
-            ctx.setTransform(this.dpr, 0, 0, this.dpr, this.dpr * this.panX, this.dpr * this.panY);
-            this._drawObj(ctx, this.currentStroke);
-            ctx.restore();
+            if (this.currentStroke.brushType === 'eraser' && this._cacheCtx) {
+                // 橡皮实时段：缓存层整体重绘（objects + 当前笔画），避免 destination-out 误伤底色/场景
+                const cc = this._cacheCtx;
+                cc.setTransform(1, 0, 0, 1, 0, 0);
+                cc.clearRect(0, 0, this._cacheCanvas.width, this._cacheCanvas.height);
+                cc.setTransform(this.dpr, 0, 0, this.dpr, this.dpr * this.panX, this.dpr * this.panY);
+                this.objects.forEach(o => this._drawObj(cc, o));
+                this._drawObj(cc, this.currentStroke);
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.drawImage(this._cacheCanvas, 0, 0);
+                ctx.restore();
+            } else {
+                ctx.save();
+                ctx.setTransform(this.dpr, 0, 0, this.dpr, this.dpr * this.panX, this.dpr * this.panY);
+                this._drawObj(ctx, this.currentStroke);
+                ctx.restore();
+            }
         }
 
         // 选中贴纸的虚线指示圈
@@ -759,8 +979,38 @@ const FreeCanvas = {
         ctx.restore();
     },
 
-    _drawStroke(ctx, s) {
+    // 对称副本点集：mirror=2 份，quad=4 份，kaleido=6 旋转×镜像=12 份
+    _symCopies(s) {
+        const cx = s.cx, cy = s.cy;
+        const rot = (p, a) => {
+            const c = Math.cos(a), sn = Math.sin(a);
+            const dx = p.x - cx, dy = p.y - cy;
+            return { x: cx + dx * c - dy * sn, y: cy + dx * sn + dy * c };
+        };
+        const mirX = (p) => ({ x: 2 * cx - p.x, y: p.y });
+        const mirY = (p) => ({ x: p.x, y: 2 * cy - p.y });
         const pts = s.points;
+        if (s.sym === 'mirror') return [pts, pts.map(mirX)];
+        if (s.sym === 'quad') return [pts, pts.map(mirX), pts.map(p => mirY(mirX(p))), pts.map(mirY)];
+        if (s.sym === 'kaleido') {
+            const out = [];
+            for (let k = 0; k < 6; k++) {
+                const a = k * Math.PI / 3;
+                out.push(pts.map(p => rot(p, a)));
+                out.push(pts.map(p => mirX(rot(p, a))));
+            }
+            return out;
+        }
+        return [pts];
+    },
+
+    _drawStroke(ctx, s, ptsOverride) {
+        // 对称模式：绘制全部副本（含原笔画本身）
+        if (s.sym && !ptsOverride) {
+            this._symCopies(s).forEach(tp => this._drawStroke(ctx, s, tp));
+            return;
+        }
+        const pts = ptsOverride || s.points;
         if (!pts.length) return;
         if (s.brushType === 'eraser') {
             ctx.save(); ctx.globalCompositeOperation = 'destination-out';
@@ -793,11 +1043,12 @@ const FreeCanvas = {
             }
             ctx.restore(); return;
         }
-        // 喷雾：随机散点
+        // 喷雾：随机散点（对称副本多时减少每点散点数保帧率）
         if (s.brushType === 'spray') {
+            const dots = s.sym ? 5 : 12;
             ctx.save(); ctx.fillStyle = s.color;
             pts.forEach(p => {
-                for (let i = 0; i < 12; i++) {
+                for (let i = 0; i < dots; i++) {
                     const angle = Math.random() * Math.PI * 2;
                     const radius = Math.random() * s.size * 1.2;
                     const dotR = Math.random() * 2 + 0.5;

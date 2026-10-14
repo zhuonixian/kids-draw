@@ -1534,3 +1534,39 @@ html, body {
 .sab-btn[data-act="rotate"] { background: #F3E5F5; color: #8E24AA; }
 .sab-btn[data-act="copy"] { background: #FFF8E1; color: #F9A825; }
 .sab-btn.sab-danger { background: #FFEBEE; color: #E53935; }
+
+/* === 场景选择弹层 === */
+.scene-grid {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+}
+
+.scene-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 4px 8px;
+}
+
+.scene-thumb {
+    width: 72px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    border: 2.5px solid #F0E6D9;
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+.scene-item.active .scene-thumb {
+    border-color: #FF6B6B;
+    transform: scale(1.06);
+}
+
+.scene-name {
+    font-size: 0.8rem;
+    color: #8D6E63;
+    font-family: var(--font-body);
+}
