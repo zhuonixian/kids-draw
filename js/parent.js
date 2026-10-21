@@ -58,6 +58,15 @@ const ParentZone = {
         const backupBtn = document.getElementById('parent-backup');
         if (backupBtn) backupBtn.addEventListener('click', () => this._exportBackup(backupBtn));
 
+        // 从备份恢复：选 ZIP 导入作品（换机/网页版迁移到 APK 的通道）
+        const importBtn = document.getElementById('parent-import');
+        if (importBtn) importBtn.addEventListener('click', () => {
+            const picker = document.getElementById('parent-import-file');
+            if (picker) { picker.value = ''; picker.click(); }
+        });
+        const importPicker = document.getElementById('parent-import-file');
+        if (importPicker) importPicker.addEventListener('change', () => this._importBackup(importPicker, importBtn));
+
         this._startRestTimer();
     },
 
@@ -180,6 +189,29 @@ const ParentZone = {
         overlay.setAttribute('aria-hidden', 'true');
         clearInterval(this._countdownTimer);
         this._countdownTimer = null;
+    },
+
+    // 选中的 ZIP → 导入画廊；完成后按结果提示（恢复数/跳过数/失败原因）
+    _importBackup(picker, btn) {
+        const file = picker.files && picker.files[0];
+        if (!file || (btn && btn.disabled)) return;
+        if (btn) { btn.disabled = true; btn.textContent = '恢复中…'; }
+        ArtworkStore.importZip(file).then(res => {
+            if (res.count) {
+                App.showToast('已恢复 ' + res.count + ' 幅作品'
+                    + (res.skipped ? '，跳过 ' + res.skipped + ' 幅已存在' : ''));
+            } else {
+                App.showToast('备份里的作品都已存在，无需恢复');
+            }
+        }).catch(err => {
+            const msg = err && err.message;
+            App.showToast(msg === 'notzip' ? '这不是有效的备份包'
+                : (msg === 'notours' ? '仅支持画画乐园的备份包'
+                : (msg === 'compressed' ? '备份包格式异常，请用「备份全部作品」重新导出'
+                : '恢复失败，请重试')));
+        }).then(() => {
+            if (btn) { btn.disabled = false; btn.textContent = '从备份恢复'; }
+        });
     },
 
     // 打包导出全部作品；过程中按钮置忙，避免重复点击触发多个下载

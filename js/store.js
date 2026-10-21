@@ -247,6 +247,129 @@ const ArtworkStore = {
         a.remove();
     },
 
+    // === 从 ZIP 备份恢复（家长中心）：解析 exportAll 产出的包并合入画廊 ===
+    // file: 用户选择的 File/Blob；返回 Promise<{count, skipped}>
+    // 错误语义：'notzip' 非压缩包 / 'notours' 非本应用备份包 / 'compressed' 含压缩条目（我们的备份恒为 store）
+    importZip(file) {
+        return file.arrayBuffer().then(buf => {
+            const entries = this._parseBackupZip(new Uint8Array(buf));
+            const manifestBytes = entries['manifest.json'];
+            if (!manifestBytes) throw new Error('notours');
+            let manifest;
+            try {
+                manifest = JSON.parse(new TextDecoder().decode(manifestBytes));
+            } catch (e) { throw new Error('notours'); }
+            if (!manifest || !Array.isArray(manifest.artworks)) throw new Error('notours');
+
+            // 跳过已存在的（同名同日期视为同一幅），其余按原日期顺序合入
+            const existing = new Set(this._records.map(r => r.name + '|' + r.createdAt));
+            const pending = [];
+            manifest.artworks.forEach(a => {
+                if (!a || !a.file || existing.has(a.name + '|' + Date.parse(a.createdAt))) return;
+                const imgBytes = entries[a.file];
+                if (!imgBytes || !imgBytes.length) return;
+                const ext = a.file.slice(a.file.lastIndexOf('.') + 1).toLowerCase();
+                const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
+                pending.push({
+                    dataUrl: 'data:' + mime + ';base64,' + this._bytesToBase64(imgBytes),
+                    name: a.name || '恢复的作品',
+                    scene: a.scene || '',
+                    createdAt: Date.parse(a.createdAt) || Date.now(),
+                });
+            });
+            if (!pending.length) return { count: 0, skipped: manifest.artworks.length };
+
+            return Promise.all(pending.map(p => this._thumbFromDataUrl(p.dataUrl))).then(thumbs => {
+                const imported = pending.map((p, i) => ({
+                    id: 'aw-' + p.createdAt + '-' + Math.random().toString(36).slice(2, 6),
+                    dataUrl: p.dataUrl,
+                    thumb: thumbs[i] || p.dataUrl,
+                    name: p.name,
+                    scene: p.scene,
+                    createdAt: p.createdAt,
+                }));
+                this._records = this._records.concat(imported)
+                    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                const overflow = [];
+                while (this._records.length > this.MAX) overflow.push(this._records.pop());
+                this._persistAll(imported, overflow);
+                window.dispatchEvent(new CustomEvent('artwork-saved', { detail: imported[0] }));
+                return { count: imported.length, skipped: manifest.artworks.length - imported.length };
+            });
+        });
+    },
+
+    _persistAll(records, overflow) {
+        try {
+            const tx = this._db.transaction(this.STORE, 'readwrite');
+            const store = tx.objectStore(this.STORE);
+            records.forEach(r => store.put(r));
+            (overflow || []).forEach(r => store.delete(r.id));
+        } catch (e) { /* 静默：会话内仍可用 */ }
+    },
+
+    // store-only ZIP 解析：定位 EOCD → 顺序读中央目录 → 按本地头定位数据切片。
+    // 只服务自家备份（exportAll 恒为 store），遇到压缩条目直接报错，不做 inflate
+    _parseBackupZip(bytes) {
+        const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        let eocd = -1;
+        const scanFloor = Math.max(0, bytes.length - 22 - 65535);
+        for (let i = bytes.length - 22; i >= scanFloor; i--) {
+            if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+        }
+        if (eocd < 0) throw new Error('notzip');
+        const count = dv.getUint16(eocd + 10, true);
+        let ptr = dv.getUint32(eocd + 16, true);
+        const decoder = new TextDecoder();
+        const entries = {};
+        for (let i = 0; i < count; i++) {
+            if (dv.getUint32(ptr, true) !== 0x02014b50) throw new Error('notzip');
+            const method = dv.getUint16(ptr + 10, true);
+            if (method !== 0) throw new Error('compressed');
+            const size = dv.getUint32(ptr + 24, true);
+            const nameLen = dv.getUint16(ptr + 28, true);
+            const extraLen = dv.getUint16(ptr + 30, true);
+            const commentLen = dv.getUint16(ptr + 32, true);
+            const localOff = dv.getUint32(ptr + 42, true);
+            const name = decoder.decode(bytes.subarray(ptr + 46, ptr + 46 + nameLen));
+            const dataStart = localOff + 30 + dv.getUint16(localOff + 26, true) + dv.getUint16(localOff + 28, true);
+            entries[name] = bytes.subarray(dataStart, dataStart + size);
+            ptr += 46 + nameLen + extraLen + commentLen;
+        }
+        return entries;
+    },
+
+    _bytesToBase64(bytes) {
+        let bin = '';
+        // 分块拼接，避免大图 String 参数栈溢出
+        for (let i = 0; i < bytes.length; i += 0x8000) {
+            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        }
+        return btoa(bin);
+    },
+
+    // 由原图 dataUrl 生成 360px JPEG 缩略图（导入的作品包里没有 thumb）
+    _thumbFromDataUrl(dataUrl) {
+        return new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const scale = Math.min(1, 360 / Math.max(img.width, img.height));
+                    const out = document.createElement('canvas');
+                    out.width = Math.max(1, Math.round(img.width * scale));
+                    out.height = Math.max(1, Math.round(img.height * scale));
+                    const ctx = out.getContext('2d');
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(0, 0, out.width, out.height);
+                    ctx.drawImage(img, 0, 0, out.width, out.height);
+                    resolve(out.toDataURL('image/jpeg', 0.75));
+                } catch (e) { resolve(null); }
+            };
+            img.onerror = () => resolve(null);
+            img.src = dataUrl;
+        });
+    },
+
     // === 全部作品打包导出（ZIP，store 不压缩；文件名 UTF-8 标志位） ===
     exportAll() {
         return Promise.resolve().then(() => {

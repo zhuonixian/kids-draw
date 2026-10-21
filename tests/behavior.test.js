@@ -209,6 +209,17 @@ assert(
     'ArtworkStore should bundle all artworks into a self-built store-method ZIP with UTF-8 filenames.'
 );
 assert(
+    store.includes('importZip') && store.includes('_parseBackupZip')
+        && store.includes("0x06054b50") && store.includes("0x02014b50")
+        && store.includes("manifest.json") && store.includes('_thumbFromDataUrl'),
+    'ArtworkStore should restore artworks from its own store-method ZIP backups (EOCD + central directory parser).'
+);
+assert(
+    parent.includes("getElementById('parent-import')") && parent.includes('ArtworkStore.importZip(file)')
+        && index.includes('id="parent-import"') && index.includes('id="parent-import-file"'),
+    'Parent zone should offer one-click restore-from-ZIP via a hidden file picker.'
+);
+assert(
     parent.includes("getElementById('parent-backup')") && parent.includes('ArtworkStore.exportAll()')
         && index.includes('id="parent-backup"') && parent.includes('ArtworkStore.clear()'),
     'Parent zone should offer one-click ZIP backup of all artworks and clear via ArtworkStore.clear.'
