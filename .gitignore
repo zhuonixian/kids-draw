@@ -8,3 +8,18 @@ node_modules/
 .claude/
 .wrangler/
 graphify-out/
+
+# 安卓壳（android-app/）：构建产物与签名密钥一律不入库
+android-app/www/
+android-app/keystore/
+android-app/keystore.properties
+android-app/android/.gradle/
+android-app/android/build/
+android-app/android/app/build/
+android-app/android/local.properties
+android-app/android/app/src/main/assets/public/
+android-app/android/capacitor-cordova-android-plugins/build/
+
+# APK 产物分发目录（不入库）
+android-app/dist/
+.zcode/

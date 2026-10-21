@@ -1,0 +1,41 @@
+name: Android APK
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    paths:
+      - 'js/**'
+      - 'css/**'
+      - 'index.html'
+      - 'assets/**'
+      - 'android-app/**'
+      - '.github/workflows/android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: 安装依赖并同步 Web 资源
+        working-directory: android-app
+        run: |
+          npm ci
+          ./sync-web.sh
+          npx cap sync android
+      - name: 构建 debug APK（不签名发布，正式包本地构建）
+        working-directory: android-app/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: 上传 APK 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-draw-debug-apk
+          path: android-app/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

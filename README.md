@@ -33,7 +33,7 @@
 - 作品画廊（缩略图 / 名称 / 日期），大图预览
 - IndexedDB 持久存储（上限 200 张、PNG 原画质 + 360px 缩略图），旧版本 localStorage 数据自动迁移
 - 保存到设备、系统分享（Web Share）、删除二次确认
-- 家长中心「备份全部作品」：一键打包 ZIP（含作品清单 manifest.json）下载留存
+- 家长中心「备份全部作品」：一键打包 ZIP（含作品清单 manifest.json）下载留存；「从备份恢复」一键导入（换机 / 网页版迁移进 APK）
 
 ### 家长中心（长按首页右上角齿轮 + 算术门）
 - 音效开关、护眼提醒（连续玩耍 20 分钟提示休息）
@@ -116,6 +116,13 @@ kids-draw/
 ```bash
 node tests/behavior.test.js
 ```
+
+## 安卓 APK
+
+见 [android-app/README.md](android-app/README.md)：Capacitor 打包，资源全部内置、完全离线，
+主仓库保持纯静态。CI（GitHub Actions）每次推送自动产出 debug APK 供下载；
+正式签名包本地构建（keystore 不入库）。孩子在网页版的旧作品可用家长中心
+「备份全部作品 (ZIP)」导出、APK 内「从备份恢复」导入。
 
 ## License
 

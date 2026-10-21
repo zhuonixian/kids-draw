@@ -1,0 +1,23 @@
+{
+    "name": "kids-draw-android",
+    "version": "2.1.0",
+    "private": true,
+    "description": "画画乐园安卓壳（Capacitor）：主仓库保持纯静态，本目录承载安卓打包",
+    "scripts": {
+        "sync": "./sync-web.sh && cap sync android",
+        "build:debug": "npm run sync && cd android && ./gradlew assembleDebug",
+        "build:release": "npm run sync && cd android && ./gradlew assembleRelease"
+    },
+    "dependencies": {
+        "@capacitor/android": "^7.0.0",
+        "@capacitor/app": "^7.0.0",
+        "@capacitor/core": "^7.0.0",
+        "@capacitor/filesystem": "^7.1.9",
+        "@capacitor/share": "^7.0.4",
+        "@capacitor/status-bar": "^7.0.0"
+    },
+    "devDependencies": {
+        "@capacitor/assets": "^3.0.0",
+        "@capacitor/cli": "^7.0.0"
+    }
+}

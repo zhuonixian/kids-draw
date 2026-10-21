@@ -1,0 +1,9 @@
+{
+    "appId": "com.zhuonixian.kidsdraw",
+    "appName": "画画乐园",
+    "webDir": "www",
+    "backgroundColor": "#FFF8E7",
+    "android": {
+        "allowMixedContent": false
+    }
+}
