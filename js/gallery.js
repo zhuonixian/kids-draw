@@ -64,6 +64,12 @@ const Gallery = {
             const scene = document.getElementById('gallery');
             if (scene && scene.classList.contains('active')) this.render();
         });
+
+        // 存储就绪（IndexedDB 异步加载/迁移完成）后，若画廊正展示空态则重绘
+        window.addEventListener('artwork-store-ready', () => {
+            const scene = document.getElementById('gallery');
+            if (scene && scene.classList.contains('active')) this.render();
+        });
     },
 
     // 进入画廊：收起遗留预览再重绘
@@ -88,7 +94,8 @@ const Gallery = {
             card.dataset.id = record.id;
 
             const img = document.createElement('img');
-            img.src = record.dataUrl;
+            // 网格用小图（新记录带 360px thumb），预览/下载仍用原图
+            img.src = record.thumb || record.dataUrl;
             img.alt = record.name;
 
             const meta = document.createElement('div');

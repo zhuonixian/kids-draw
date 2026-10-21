@@ -1,6 +1,6 @@
 // === 画画乐园 Service Worker：离线缓存应用壳 ===
 // 版本号递增即可触发旧缓存清理
-const CACHE = 'kids-draw-v5';
+const CACHE = 'kids-draw-v6';
 const ASSETS = [
     './',
     './index.html',

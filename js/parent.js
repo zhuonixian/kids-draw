@@ -46,13 +46,17 @@ const ParentZone = {
 
         // 危险操作：两段确认
         this._bindDanger('parent-clear-gallery', () => {
-            ArtworkStore.list().forEach(r => ArtworkStore.remove(r.id));
+            ArtworkStore.clear();
             App.showToast('作品集已清空');
         });
         this._bindDanger('parent-reset-progress', () => {
             ShapeProgress.reset();
             App.showToast('收集进度已重置');
         });
+
+        // 备份全部作品：打包 ZIP 下载到设备
+        const backupBtn = document.getElementById('parent-backup');
+        if (backupBtn) backupBtn.addEventListener('click', () => this._exportBackup(backupBtn));
 
         this._startRestTimer();
     },
@@ -176,6 +180,23 @@ const ParentZone = {
         overlay.setAttribute('aria-hidden', 'true');
         clearInterval(this._countdownTimer);
         this._countdownTimer = null;
+    },
+
+    // 打包导出全部作品；过程中按钮置忙，避免重复点击触发多个下载
+    _exportBackup(btn) {
+        if (btn.disabled) return;
+        const label = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '打包中…';
+        ArtworkStore.exportAll().then(res => {
+            const mb = (res.bytes / 1024 / 1024).toFixed(1);
+            App.showToast('已导出 ' + res.count + ' 幅作品（' + mb + 'MB）');
+        }).catch(err => {
+            App.showToast(err && err.message === 'empty' ? '还没有作品可导出' : '导出失败，请重试');
+        }).then(() => {
+            btn.disabled = false;
+            btn.textContent = label;
+        });
     },
 
     // 危险操作通用绑定：首点变「确认？」+ 警示样式，2.5s 未确认还原

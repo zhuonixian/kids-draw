@@ -186,8 +186,36 @@ assert(
     'FreeCanvas should trigger draw sound when a brush stroke starts or moves.'
 );
 assert(
-    store.includes('const ArtworkStore') && store.includes('dataUrl') && store.includes('download'),
-    'ArtworkStore should persist artworks to localStorage with export helpers.'
+    store.includes('const ArtworkStore') && store.includes('download'),
+    'ArtworkStore should persist artworks with export helpers.'
+);
+assert(
+    store.includes('indexedDB.open') && store.includes("'artwork-store-ready'")
+        && store.includes('ArtworkStore.init()'),
+    'ArtworkStore should persist artworks to IndexedDB (loaded at boot, gallery re-renders on store-ready).'
+);
+assert(
+    store.includes("LEGACY_KEY: 'kids-draw-gallery'") && store.includes('_migrateLegacy')
+        && store.includes("localStorage.removeItem(this.LEGACY_KEY)"),
+    'Legacy localStorage gallery should migrate into IndexedDB and free the old key only after success.'
+);
+assert(
+    /MAX:\s*200/.test(store) && store.includes("_localSave") && store.includes('LOCAL_MAX'),
+    'IndexedDB mode should cap at 200 artworks with a localStorage fallback path for file:// usage.'
+);
+assert(
+    store.includes('exportAll') && store.includes('_buildZip') && store.includes('_crc32')
+        && store.includes('0x0800'),
+    'ArtworkStore should bundle all artworks into a self-built store-method ZIP with UTF-8 filenames.'
+);
+assert(
+    parent.includes("getElementById('parent-backup')") && parent.includes('ArtworkStore.exportAll()')
+        && index.includes('id="parent-backup"') && parent.includes('ArtworkStore.clear()'),
+    'Parent zone should offer one-click ZIP backup of all artworks and clear via ArtworkStore.clear.'
+);
+assert(
+    gallery.includes('record.thumb || record.dataUrl'),
+    'Gallery grid should prefer the 360px thumbnail over full-resolution data URLs.'
 );
 assert(
     gallery.includes('const Gallery') && gallery.includes('onEnter') && gallery.includes('render'),
