@@ -20,8 +20,8 @@ android-app/
 
 ## 环境要求（一次性安装）
 
-- JDK 21（本机装在 `~/tools/jdk-21`，Temurin）
-- Android SDK（本机在 `~/Android/Sdk`：platform-tools、platforms;android-35、build-tools）
+- JDK 21（本机在 `/home/zhang/worktools/jdk-21`，Temurin）
+- Android SDK（本机在 `/home/zhang/worktools/android-sdk`：platform-tools、platforms;android-35、build-tools）
 
 ## 常用命令
 
