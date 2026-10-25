@@ -1,6 +1,6 @@
 // === 画画乐园 Service Worker：离线缓存应用壳 ===
 // 版本号递增即可触发旧缓存清理
-const CACHE = 'kids-draw-v6';
+const CACHE = 'kids-draw-v7';
 const ASSETS = [
     './',
     './index.html',
@@ -19,6 +19,8 @@ const ASSETS = [
     './assets/fonts/zcool-kuaile-subset.woff2',
     './assets/icons/icon-192.png',
     './assets/icons/icon-512.png',
+    // 汉字笔画骨架字库（9574 字，Arphic Public License）：名字描红离线可用
+    './assets/hanzi/hanzi-medians.json',
     // 贴纸 PNG（约 3.7MB）：预缓存保证离线可用的贴纸架
     // --- birthday ---
     './assets/stickers/birthday/balloons.png',

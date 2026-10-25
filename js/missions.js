@@ -15,7 +15,8 @@ const Missions = {
         { id: 'kaleido8', icon: '🎨', title: '万花筒小画家', desc: '用万花筒画 8 笔', target: 8, event: 'stroke', where: p => p.sym === 'kaleido' },
         { id: 'space3',   icon: '🚀', title: '太空漫游', desc: '在太空场景画 3 笔', target: 3, event: 'stroke', where: p => p.scene === 'space' },
         { id: 'sticker10', icon: '🏅', title: '贴纸收藏家', desc: '一共放上 10 个贴纸', target: 10, event: 'sticker' },
-        { id: 'save3',    icon: '🖼️', title: '小小艺术家', desc: '保存 3 幅作品', target: 3, event: 'save' }
+        { id: 'save3',    icon: '🖼️', title: '小小艺术家', desc: '保存 3 幅作品', target: 3, event: 'save' },
+        { id: 'name1',    icon: '✍️', title: '会写自己的名字', desc: '在「名字」描红里写完一个字', target: 1, event: 'trace', where: p => p && p.category === 'name' }
     ],
 
     state: { progress: {}, done: [], hinted: [] },
@@ -67,6 +68,7 @@ const Missions = {
             if (typeof App !== 'undefined') {
                 App.showToast(finished.length === 1 ? `任务完成：${finished[0].title} 🏆` : `完成 ${finished.length} 个任务 🏆`);
                 App.celebrate();
+                App.say(finished.length === 1 ? '任务完成！' + finished[0].title : '完成任务！');
             }
         } else {
             this._save();

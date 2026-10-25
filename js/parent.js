@@ -33,6 +33,34 @@ const ParentZone = {
             this._syncToggles();
         });
 
+        // 语音引导开关：不识字的孩子靠它听懂提示
+        document.getElementById('parent-voice').addEventListener('click', () => {
+            const v = !Settings.get('voice', true);
+            Settings.set('voice', v);
+            if (typeof App !== 'undefined') App.voiceEnabled = v;
+            if (v && typeof App !== 'undefined' && App.say) App.say('语音引导已开启');
+            this._syncToggles();
+        });
+
+        // 宝贝名字：保存即重建名字描红形状序列
+        const nameInput = document.getElementById('parent-child-name');
+        if (nameInput) {
+            nameInput.addEventListener('change', () => this._saveChildName(nameInput));
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); nameInput.blur(); }
+            });
+        }
+
+        // 关于与隐私
+        const privacyBtn = document.getElementById('parent-privacy');
+        if (privacyBtn) privacyBtn.addEventListener('click', () => this._showPrivacy());
+        const privacyClose = document.getElementById('privacy-close');
+        if (privacyClose) privacyClose.addEventListener('click', () => this._hidePrivacy());
+        const privacyOverlay = document.getElementById('privacy-overlay');
+        if (privacyOverlay) privacyOverlay.addEventListener('click', (e) => {
+            if (e.target === privacyOverlay) this._hidePrivacy();
+        });
+
         // 护眼开关：关闭时收起浮层、清零累计，重新计时
         document.getElementById('parent-rest').addEventListener('click', () => {
             const v = !Settings.get('rest', true);
@@ -111,12 +139,54 @@ const ParentZone = {
             const panel = document.getElementById('parent-panel');
             panel.hidden = false;
             panel.style.display = '';
+            const nameInput = document.getElementById('parent-child-name');
+            if (nameInput) nameInput.value = Settings.get('childName', '');
             this._renderReport();
             this._syncToggles();
         } else {
             App.showToast('答错了，再试试');
             this._newQuestion();
         }
+    },
+
+    // 保存宝贝名字：只留中日韩文字/字母（数字与符号对描红无意义），字库未收录字在重建时自动跳过
+    _saveChildName(input) {
+        const raw = input.value || '';
+        const clean = raw.replace(/[^\u4e00-\u9fff\u3400-\u4dbfA-Za-z]/g, '').slice(0, 6);
+        if (clean !== raw) input.value = clean;
+        const prev = Settings.get('childName', '');
+        if (clean === prev) return;
+        Settings.set('childName', clean);
+        const apply = () => {
+            if (typeof rebuildNameShapes !== 'undefined') {
+                const seq = rebuildNameShapes(clean);
+                if (clean && !seq.length) {
+                    App.showToast('名字已保存，但笔画库暂未收录这些字');
+                } else if (seq.length) {
+                    App.showToast('已生成 ' + seq.length + ' 个名字描红字 ✍️');
+                    if (typeof Tracing !== 'undefined') Tracing._shapePickerCat = 'name';
+                } else {
+                    App.showToast('名字已清空');
+                }
+            }
+        };
+        if (typeof HanziData !== 'undefined' && HanziData.data) apply();
+        else if (typeof HanziData !== 'undefined') HanziData.load().then(apply);
+        else apply();
+    },
+
+    _showPrivacy() {
+        const overlay = document.getElementById('privacy-overlay');
+        if (!overlay) return;
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+    },
+
+    _hidePrivacy() {
+        const overlay = document.getElementById('privacy-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
     },
 
     // 创作小报告：本地数据聚合，让家长看到孩子的成长记录
@@ -141,11 +211,19 @@ const ParentZone = {
         const soundOn = (typeof App !== 'undefined' && typeof App.soundEnabled === 'boolean')
             ? App.soundEnabled
             : Settings.get('sound', true);
+        const voiceOn = (typeof App !== 'undefined' && typeof App.voiceEnabled === 'boolean')
+            ? App.voiceEnabled
+            : Settings.get('voice', true);
         const restOn = Settings.get('rest', true);
         const sound = document.getElementById('parent-sound');
+        const voice = document.getElementById('parent-voice');
         const rest = document.getElementById('parent-rest');
         sound.classList.toggle('on', soundOn);
         sound.setAttribute('aria-checked', String(soundOn));
+        if (voice) {
+            voice.classList.toggle('on', voiceOn);
+            voice.setAttribute('aria-checked', String(voiceOn));
+        }
         rest.classList.toggle('on', restOn);
         rest.setAttribute('aria-checked', String(restOn));
     },

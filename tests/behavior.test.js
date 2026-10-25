@@ -262,6 +262,60 @@ try {
 } catch (e) {
     assert(false, 'shapes.js should evaluate in plain Node without DOM dependencies.');
 }
+// === 名字描红 ===
+assert(
+    fs.existsSync(path.join(root, 'assets', 'hanzi', 'hanzi-medians.json'))
+        && fs.existsSync(path.join(root, 'assets', 'hanzi', 'APL-LICENSE.txt')),
+    'Hanzi stroke data and its Arphic Public License text must ship in assets/hanzi/.'
+);
+try {
+    const hanzi = JSON.parse(fs.readFileSync(path.join(root, 'assets', 'hanzi', 'hanzi-medians.json'), 'utf8'));
+    assert(Object.keys(hanzi).length >= 9000, `Hanzi medians library should cover >= 9000 chars, got ${Object.keys(hanzi).length}.`);
+    assert(hanzi['王'] && hanzi['王'].length === 4, '"王" should decompose into 4 strokes.');
+} catch (e) {
+    assert(false, 'hanzi-medians.json should be valid JSON: ' + e.message);
+}
+assert(
+    shapesSrc.includes('const HanziData') && shapesSrc.includes('convertHanziParts') && shapesSrc.includes('rebuildNameShapes'),
+    'shapes.js should provide the hanzi data loader, medians-to-parts converter, and name shape rebuilder.'
+);
+try {
+    const api = new Function(shapesSrc + '\nreturn { convert: convertHanziParts, HanziData: HanziData };')();
+    // 一横（两点骨架）→ 4 顶点带状多边形；单点骨架 → 方框兜底
+    const bar = api.convert([[100, 500, 900, 500]]);
+    assert(Array.isArray(bar) && bar.length === 1 && bar[0].length === 4
+        && bar[0].every(p => p[0] >= 0 && p[0] <= 1 && p[1] >= 0 && p[1] <= 1),
+        'convertHanziParts should turn a 2-point skeleton into a 4-vertex 0-1 polygon.');
+    const dot = api.convert([[500, 500]]);
+    assert(dot.length === 1 && dot[0].length === 4, 'single-point skeleton should fall back to a small quad.');
+} catch (e) {
+    assert(false, 'convertHanziParts should evaluate and convert in plain Node: ' + e.message);
+}
+assert(
+    shapesSrc.includes("groupId: cfg.groupId") && shapesSrc.includes("name: '名字 ' + ch") && shapesSrc.includes("category: 'name'"),
+    'Name shapes should register under the name category with a unique 名字 prefix and a shared groupId.'
+);
+assert(
+    tracing.includes("name: '名字'") && tracing.includes('_nextShapeIndex') && tracing.includes('groupId === cur.groupId'),
+    'Shape picker should expose the name category first and auto-advance should cycle within the name group.'
+);
+assert(
+    tracing.includes("Missions.bump('trace'") && missions.includes("id: 'name1'") && missions.includes("category === 'name'"),
+    'Completing a tracing shape should bump the trace event; missions should include the write-your-name task.'
+);
+assert(
+    app.includes('say(text)') && app.includes('SpeechSynthesisUtterance') && app.includes('TextToSpeech'),
+    'App.say should speak via native TTS in the APK and speechSynthesis on the web.'
+);
+assert(
+    parent.includes("getElementById('parent-child-name')") && parent.includes('_saveChildName') && parent.includes('rebuildNameShapes'),
+    'Parent zone should save the child name and rebuild name tracing shapes immediately.'
+);
+assert(
+    index.includes('id="parent-child-name"') && index.includes('id="parent-voice"')
+        && index.includes('id="privacy-overlay"') && index.includes('不收集任何数据'),
+    'index.html should include the name input, voice toggle, and privacy overlay.'
+);
 assert(
     tracing.includes('_selectShape') && tracing.includes('_renderShapePicker') && tracing.includes('ShapeProgress.mark'),
     'Tracing should wire the shape picker panel and record collection progress.'

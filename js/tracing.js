@@ -35,8 +35,8 @@ const Tracing = {
     // === 形状图鉴弹层 ===
     // Shapes 正在扩充（category: basic/number/letter/animal/vehicle），
     // 未标注 category 的形状一律归入 basic，代码对 Shapes 数量/顺序不做假设
-    _SHAPE_CATS: { basic: '基础', chinese: '汉字', number: '数字', letter: '字母', animal: '动物', vehicle: '交通' },
-    _SHAPE_CAT_ORDER: ['basic', 'chinese', 'number', 'letter', 'animal', 'vehicle'],
+    _SHAPE_CATS: { name: '名字', basic: '基础', chinese: '汉字', number: '数字', letter: '字母', animal: '动物', vehicle: '交通' },
+    _SHAPE_CAT_ORDER: ['name', 'basic', 'chinese', 'number', 'letter', 'animal', 'vehicle'],
     _shapePickerCat: null,
     _advanceTimer: null,
 
@@ -380,6 +380,7 @@ const Tracing = {
         this.mode = 'coloring'; this.lastFillPos = null;
         this.fillCtx.clearRect(0, 0, this.canvasW, this.canvasH);
         this.redraw();
+        App.say('描得真好，来涂色吧！');
     },
 
     // === 填色 ===
@@ -461,13 +462,38 @@ const Tracing = {
             this._saveArtwork();
             this.mode = 'complete';
             App.celebrate();
+            App.say('太棒了！');
+            // 任务埋点：描红完成（名字分类触发「会写自己的名字」任务）
+            if (typeof Missions !== 'undefined') Missions.bump('trace', { category: cat, name: shape.name });
             this._advanceTimer = setTimeout(() => {
-                this.currentShapeIndex = (this.currentShapeIndex + 1) % Shapes.length;
+                this.currentShapeIndex = this._nextShapeIndex();
                 this.onEnter();
+                this._announceShape();
             }, 3000);
         } else {
             this._encourage('再多涂一点点！');
         }
+    },
+
+    // 完成后的下一个形状：名字序列内循环（反复练名字），其余按 Shapes 顺序轮换
+    _nextShapeIndex() {
+        const cur = Shapes[this.currentShapeIndex];
+        if (cur && cur.groupId) {
+            const groupIdx = [];
+            Shapes.forEach((s, i) => { if (s.groupId === cur.groupId) groupIdx.push(i); });
+            const pos = groupIdx.indexOf(this.currentShapeIndex);
+            if (pos >= 0 && groupIdx.length) return groupIdx[(pos + 1) % groupIdx.length];
+        }
+        return (this.currentShapeIndex + 1) % Shapes.length;
+    },
+
+    // 语音播报当前形状：名字形状只念单字（识字强化），其余念形状名
+    _announceShape() {
+        const shape = Shapes[this.currentShapeIndex];
+        if (!shape || typeof App === 'undefined' || !App.say) return;
+        App.say(shape.category === 'name' && shape.name.indexOf('名字 ') === 0
+            ? shape.name.slice(3)
+            : shape.name);
     },
 
     // 完成时自动保存作品（celebrate 前画布还是完整成品）；失败静默，不打扰孩子
@@ -585,12 +611,14 @@ const Tracing = {
 
         const progress = (typeof ShapeProgress !== 'undefined') ? ShapeProgress.list() : {};
 
-        // 按 category 分组，保持 Shapes 原始下标；分类按固定顺序去重排列
+        // 按分类分组，保持 Shapes 原始下标；分类按固定顺序去重排列
         const groups = {};
         Shapes.forEach((shape, i) => {
             const cat = this._shapeCategoryOf(shape);
             (groups[cat] = groups[cat] || []).push(i);
         });
+        // 「名字」tab 恒在首位：未设置名字时空态引导去家长中心
+        if (!groups.name) groups.name = [];
         const cats = Object.keys(groups).sort((a, b) =>
             this._SHAPE_CAT_ORDER.indexOf(a) - this._SHAPE_CAT_ORDER.indexOf(b));
 
@@ -617,6 +645,16 @@ const Tracing = {
         const items = (groups[this._shapePickerCat] || [])
             .slice()
             .sort((a, b) => (Shapes[a].level || 1) - (Shapes[b].level || 1));
+        // 名字 tab 空态：引导家长去家长中心设置名字
+        if (this._shapePickerCat === 'name' && !items.length) {
+            const hint = document.createElement('div');
+            hint.className = 'picker-name-hint';
+            hint.innerHTML = '<b>✍️ 还没有设置宝贝的名字</b>' +
+                '<span>请家长长按首页右上角的 ⚙️ 进入家长中心，填上宝贝的名字，' +
+                '这里就会逐字生成名字描红练习页啦</span>';
+            gridEl.appendChild(hint);
+            return;
+        }
         items.forEach(idx => {
             const shape = Shapes[idx];
             const item = document.createElement('button');
@@ -685,6 +723,7 @@ const Tracing = {
         if (this._advanceTimer) { clearTimeout(this._advanceTimer); this._advanceTimer = null; }
         this.resizeCanvas();
         this.startTracing();
+        this._announceShape();
     },
 
     // === 事件（只绑一次）===

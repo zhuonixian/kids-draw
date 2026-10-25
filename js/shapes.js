@@ -515,6 +515,7 @@ function polyShape(cfg) {
         name: cfg.name,
         level: cfg.level,
         category: cfg.category,
+        groupId: cfg.groupId,
         partsCount: parts.length,
         drawFillPath(ctx, cx, cy, size) {
             ctx.beginPath();
@@ -699,3 +700,87 @@ Object.keys(CHINESE_PARTS).forEach((k, i) => {
     const level = i < 5 ? 1 : (i < 12 ? 2 : 3);
     Shapes.push(polyShape({ name: '汉字 ' + k, level: level, category: 'chinese', parts: CHINESE_PARTS[k], w: 0.78, h: 0.92 }));
 });
+
+// === 名字描红：makemeahanzi 笔画骨架 → 逐笔引导形状 ===
+// 数据: assets/hanzi/hanzi-medians.json（9574 字全字库，Arphic Public License，
+// 许可全文见同目录 APL-LICENSE.txt；仅含笔画骨架线，不含字形轮廓）。
+// 工具链: node tools/build-hanzi-data.mjs 可从 makemeahanzi graphics.txt 重新生成。
+const HanziData = {
+    data: null,       // { 字: [笔1, 笔2, ...] }，每笔 [x,y,x,y,...] 千分比整数（0-1000，y 向下）
+    _loading: null,
+
+    load() {
+        if (this.data) return Promise.resolve(this.data);
+        if (this._loading) return this._loading;
+        this._loading = fetch('assets/hanzi/hanzi-medians.json')
+            .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+            .then(d => { this.data = d; return d; })
+            .catch(() => { this._loading = null; return null; });
+        return this._loading;
+    },
+
+    has(ch) { return !!(this.data && this.data[ch]); },
+};
+
+// 骨架线 → 带状多边形部件：每点沿法线方向 ±W/2 偏移，拼成闭合环
+// （笔宽 110‰ 与手工 15 字的 0.11-0.14 观感一致；返回 polyShape 的 parts 格式 0-1 顶点）
+function convertHanziParts(strokes) {
+    const W = 110;
+    return strokes.map(flat => {
+        const pts = [];
+        for (let i = 0; i + 1 < flat.length; i += 2) pts.push([flat[i], flat[i + 1]]);
+        if (pts.length === 1) {
+            // 单点笔画（如「点」骨架退化为一点）：小方框兜底
+            const x = pts[0][0], y = pts[0][1], h = 72;
+            return [[(x - h) / 1000, (y - h) / 1000], [(x + h) / 1000, (y - h) / 1000],
+                [(x + h) / 1000, (y + h) / 1000], [(x - h) / 1000, (y + h) / 1000]];
+        }
+        const left = [], right = [];
+        for (let i = 0; i < pts.length; i++) {
+            const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+            let dx = b[0] - a[0], dy = b[1] - a[1];
+            const len = Math.hypot(dx, dy) || 1;
+            dx /= len; dy /= len;
+            const nx = -dy * W / 2, ny = dx * W / 2;
+            left.push([(pts[i][0] + nx) / 1000, (pts[i][1] + ny) / 1000]);
+            right.push([(pts[i][0] - nx) / 1000, (pts[i][1] - ny) / 1000]);
+        }
+        return left.concat(right.reverse());
+    });
+}
+
+// 按孩子名字重建「名字」形状序列（去重、跳过字库未收录字）；
+// groupId 相同供描红完成后在名字内循环推进；「名字 」前缀避免与汉字分类撞名
+function rebuildNameShapes(childName) {
+    for (let i = Shapes.length - 1; i >= 0; i--) {
+        if (Shapes[i].category === 'name') Shapes.splice(i, 1);
+    }
+    const name = String(childName || '').replace(/\s+/g, '');
+    if (!name) return [];
+    const seen = new Set();
+    const seq = [];
+    for (const ch of name) {
+        if (seen.has(ch) || !HanziData.has(ch)) continue;
+        seen.add(ch);
+        Shapes.push(polyShape({
+            name: '名字 ' + ch,
+            level: 2, category: 'name',
+            parts: convertHanziParts(HanziData.data[ch]),
+            w: 0.78, h: 0.92,
+            groupId: 'name',
+        }));
+        seq.push(ch);
+    }
+    return seq;
+}
+
+// 启动即加载字库并按已存名字重建（改名时 parent.js 会再次调用）
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+        HanziData.load().then(() => {
+            if (typeof Settings === 'undefined') return;
+            const saved = Settings.get('childName', '');
+            if (saved) rebuildNameShapes(saved);
+        });
+    });
+}

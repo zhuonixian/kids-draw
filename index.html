@@ -494,6 +494,14 @@
             </div>
             <div class="parent-panel" id="parent-panel" hidden>
                 <div class="parent-report" id="parent-report"></div>
+                <div class="parent-row parent-row-name">
+                    <div class="parent-row-text">
+                        <b>宝贝名字</b>
+                        <span>填上名字，「描边填色」里会逐字生成名字描红练习页</span>
+                    </div>
+                    <input id="parent-child-name" class="parent-name-input" type="text" maxlength="6"
+                        placeholder="如：王小明" autocomplete="off" aria-label="宝贝名字">
+                </div>
                 <div class="parent-row">
                     <div class="parent-row-text">
                         <b>音效</b>
@@ -501,6 +509,13 @@
                         <span class="parent-hint">iPad 听不到声音？请检查侧边静音开关（划到无橙线）和音量键，Safari 静音模式下画画声也会消失</span>
                     </div>
                     <button class="parent-toggle" id="parent-sound" role="switch" aria-checked="true" aria-label="音效开关"><span class="parent-toggle-knob"></span></button>
+                </div>
+                <div class="parent-row">
+                    <div class="parent-row-text">
+                        <b>语音引导</b>
+                        <span>朗读形状名字、描红鼓励与任务提示（适合不识字的小朋友）</span>
+                    </div>
+                    <button class="parent-toggle" id="parent-voice" role="switch" aria-checked="true" aria-label="语音引导开关"><span class="parent-toggle-knob"></span></button>
                 </div>
                 <div class="parent-row">
                     <div class="parent-row-text">
@@ -517,9 +532,10 @@
                 </div>
                 <input type="file" id="parent-import-file" accept=".zip,application/zip" hidden>
                 <div class="parent-about">
-                    <b>画画乐园 · v2.1</b>
+                    <b>画画乐园 · v2.2</b>
                     <span>纯本地运行 · 无广告 · 无外链 · 不收集任何数据</span>
-                    <span>作品保存在本机（IndexedDB），可随时打包备份</span>
+                    <span>描边填色 / 自由画布 / 我的作品 · 适合 3-8 岁小朋友</span>
+                    <button class="picker-action" id="parent-privacy">关于与隐私</button>
                 </div>
             </div>
         </div>
@@ -532,6 +548,22 @@
             <div class="rest-title">休息一下眼睛吧</div>
             <div class="rest-count" id="rest-countdown">20</div>
             <div class="rest-tip">看看远处，眨眨眼睛</div>
+        </div>
+    </div>
+
+    <!-- 关于与隐私 -->
+    <div id="privacy-overlay" class="rest-overlay" aria-hidden="true">
+        <div class="privacy-card">
+            <div class="rest-emoji">🔒</div>
+            <div class="privacy-title">关于画画乐园</div>
+            <div class="privacy-body">
+                <p><b>我们保护孩子，也尊重家长</b></p>
+                <p>画画乐园<b>不收集任何数据</b>：没有账号、没有广告、没有外链、没有统计埋点。所有作品、进度与设置只保存在这台设备的本地存储里，卸载应用或清除浏览器数据即全部删除。</p>
+                <p><b>本地优先</b>：应用可以完全离线使用（PWA / 安卓 APK），使用过程不向任何服务器发送信息。</p>
+                <p><b>开源许可</b>：应用代码 MIT；「站酷快乐体」字体遵循 OFL（见 assets/fonts/OFL.txt）；名字描红的汉字笔画数据来自 <a href="https://github.com/skishore/makemeahanzi" target="_blank" rel="noopener">makemeahanzi</a> 项目，遵循 Arphic Public License（全文见应用内 assets/hanzi/APL-LICENSE.txt）。</p>
+                <p><b>适合年龄</b>：3-8 岁。建议家长陪同使用，连续使用 20 分钟可开启护眼提醒。</p>
+            </div>
+            <button class="picker-action" id="privacy-close">我知道了</button>
         </div>
     </div>
 

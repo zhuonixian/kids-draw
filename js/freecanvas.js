@@ -172,6 +172,7 @@ const FreeCanvas = {
                     pan: '🖐 拖动画布：移动画布，看其他地方'
                 };
                 App.showToast(tips[btn.dataset.type === 'eraser' ? 'eraser' : btn.dataset.tool] || '', 1600);
+                App.say(btn.dataset.type === 'eraser' ? '橡皮擦' : '');
                 if (btn.dataset.tool === 'sticker') this._togglePanel('sticker-panel');
                 else if (btn.dataset.tool === 'shape') this._togglePanel('shape-panel');
             };
@@ -196,6 +197,8 @@ const FreeCanvas = {
                     dotted: '▪️ 虚线笔：可爱的虚线条'
                 };
                 App.showToast(brushTips[btn.dataset.type] || '', 1600);
+                const brushSpeech = { crayon: '彩笔', marker: '马克笔', brush: '毛笔', highlighter: '荧光笔', rainbow: '彩虹笔', spray: '喷雾', glow: '发光笔', dotted: '虚线笔' };
+                App.say(brushSpeech[btn.dataset.type] || '');
             };
         });
 

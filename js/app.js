@@ -9,6 +9,7 @@ const App = {
 
     init() {
         this.soundEnabled = (typeof Settings !== 'undefined') ? Settings.get('sound', true) : true;
+        this.voiceEnabled = (typeof Settings !== 'undefined') ? Settings.get('voice', true) : true;
         this.preventGestures();
         this.bindAudioUnlock();
         this.bindHomeButtons();
@@ -274,6 +275,31 @@ const App = {
             default:
                 this._noise(0.05, 0.11);
                 this._tone(260 + Math.random() * 90, 0.035, 'triangle', 0.045);
+        }
+    },
+
+    // 语音播报（给不识字的小朋友）：APK 内用原生 TTS（安卓 WebView 不带 speechSynthesis），
+    // 网页用系统 speechSynthesis；均不可用静默降级。600ms 节流防连续播报叠音
+    say(text) {
+        if (!this.voiceEnabled || !text) return;
+        const now = Date.now();
+        if (now - (this._lastSay || 0) < 600) return;
+        this._lastSay = now;
+        try {
+            const cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech;
+            if (cap) {
+                cap.speak({ text: String(text), lang: 'zh-CN', rate: 0.95, category: 'kidsdraw_tts' }).catch(() => {});
+                return;
+            }
+            if ('speechSynthesis' in window) {
+                const u = new SpeechSynthesisUtterance(String(text));
+                u.lang = 'zh-CN';
+                u.rate = 0.95;
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(u);
+            }
+        } catch (e) {
+            // 语音失败不影响任何功能
         }
     },
 

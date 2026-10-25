@@ -1132,6 +1132,89 @@ html, body {
     margin-top: 8px;
 }
 
+/* === 关于与隐私浮层（复用 rest-overlay 遮罩） === */
+.privacy-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 24px 22px;
+    max-width: 420px;
+    width: calc(100% - 48px);
+    max-height: 80vh;
+    overflow-y: auto;
+    text-align: center;
+    font-family: var(--font-body);
+    color: #5D4037;
+    box-shadow: 0 10px 40px rgba(93, 64, 55, 0.18);
+}
+
+.privacy-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 6px 0 4px;
+}
+
+.privacy-body {
+    text-align: left;
+    font-size: 0.86rem;
+    line-height: 1.65;
+    color: #6D4C41;
+}
+
+.privacy-body p {
+    margin: 10px 0;
+}
+
+.privacy-body a {
+    color: #0984E3;
+}
+
+.privacy-card .picker-action {
+    margin-top: 14px;
+    width: 100%;
+}
+
+/* 名字 tab 空态引导 */
+.picker-name-hint {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 32px 20px;
+    color: #8D6E63;
+    font-family: var(--font-body);
+}
+
+.picker-name-hint b {
+    font-size: 1.05rem;
+}
+
+.picker-name-hint span {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: #A1887F;
+}
+
+/* 家长中心：宝贝名字输入 */
+.parent-name-input {
+    flex-shrink: 0;
+    width: 128px;
+    padding: 10px 12px;
+    border: 2px solid #FFE0B2;
+    border-radius: 12px;
+    background: #FFFDF7;
+    font-size: 1rem;
+    color: #5D4037;
+    font-family: var(--font-body);
+    outline: none;
+}
+
+.parent-name-input:focus {
+    border-color: #FFB74D;
+}
+
 .picker-tabs {
     display: flex;
     gap: 6px;
