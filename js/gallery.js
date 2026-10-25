@@ -16,6 +16,10 @@ const Gallery = {
 
         document.getElementById('gallery-back').addEventListener('click', () => App.showScene('home'));
 
+        // 成长画册：全部作品排版成 A4 画册打印（打印为 PDF 即可存档分享）
+        const printBtn = document.getElementById('gallery-print');
+        if (printBtn) printBtn.addEventListener('click', () => this.printAlbum());
+
         // 点遮罩关闭预览
         const backdrop = this.lightbox.querySelector('[data-close]');
         if (backdrop) backdrop.addEventListener('click', () => this._closeLightbox());
@@ -70,6 +74,48 @@ const Gallery = {
             const scene = document.getElementById('gallery');
             if (scene && scene.classList.contains('active')) this.render();
         });
+    },
+
+    // 成长画册打印：A4 双列，含作品名与日期；最多取最近 60 幅（避免打印文档过重）
+    printAlbum() {
+        const list = ArtworkStore.list().slice(0, 60);
+        if (!list.length) {
+            App.showToast('还没有作品，先去画一幅吧 🎨');
+            return;
+        }
+        const fmt = (ts) => {
+            const d = new Date(ts);
+            return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+        };
+        const who = (typeof Settings !== 'undefined' && Settings.get('childName', '')) || '宝贝';
+        const frame = document.createElement('iframe');
+        frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+        document.body.appendChild(frame);
+        const doc = frame.contentDocument;
+        doc.open();
+        doc.write('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>画画乐园 · ' + who + '的成长画册</title>' +
+            '<style>' +
+            '@page { size: A4; margin: 10mm; }' +
+            "body { font-family: sans-serif; color: #444; }" +
+            'h1 { font-size: 18px; text-align: center; margin: 0 0 6mm; }' +
+            '.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }' +
+            '.cell { border: 2px dashed #bbb; border-radius: 12px; padding: 4mm; text-align: center; page-break-inside: avoid; }' +
+            '.cell img { width: 100%; }' +
+            '.cap { margin: 2mm 0 0; font-size: 13px; color: #888; }' +
+            '</style></head><body>' +
+            '<h1>🎨 ' + who + '的成长画册 · ' + list.length + ' 幅作品</h1>' +
+            '<div class="grid">' +
+            list.map(r => '<div class="cell"><img src="' + r.dataUrl + '"><p class="cap">' + r.name + ' · ' + fmt(r.createdAt) + '</p></div>').join('') +
+            '</div></body></html>');
+        doc.close();
+        App.showToast('已生成成长画册，可打印或存为 PDF');
+        const doPrint = () => {
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+            setTimeout(() => frame.remove(), 2000);
+        };
+        if (doc.readyState === 'complete') doPrint();
+        else frame.onload = doPrint;
     },
 
     // 进入画廊：收起遗留预览再重绘

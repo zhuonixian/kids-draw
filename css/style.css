@@ -1215,6 +1215,61 @@ html, body {
     border-color: #FFB74D;
 }
 
+/* === 首次使用引导 === */
+.guide-card {
+    max-width: 360px;
+}
+
+.guide-emoji {
+    font-size: 3.4rem;
+    line-height: 1.1;
+}
+
+.guide-body {
+    font-size: 0.92rem;
+    line-height: 1.7;
+    color: #8D6E63;
+    min-height: 3.2em;
+    margin: 8px 0 4px;
+}
+
+.guide-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin: 10px 0 4px;
+}
+
+.guide-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #FFE0B2;
+}
+
+.guide-dot.active {
+    background: #FF9800;
+    transform: scale(1.25);
+}
+
+.guide-skip {
+    margin-top: 10px;
+    background: none;
+    border: none;
+    color: #BCAAA4;
+    font-size: 0.82rem;
+    font-family: var(--font-body);
+    text-decoration: underline;
+}
+
+/* 画廊：打印画册按钮 */
+.gallery-print-btn {
+    margin-left: auto;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
 .picker-tabs {
     display: flex;
     gap: 6px;

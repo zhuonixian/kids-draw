@@ -774,10 +774,60 @@ function rebuildNameShapes(childName) {
     return seq;
 }
 
-// 启动即加载字库并按已存名字重建（改名时 parent.js 会再次调用）
+// === 汉字识字库扩充：手工 15 字 + 常用字表（字库生成，按笔画数自动分级） ===
+// 覆盖一年级常用识字场景：数字/方位/自然/家人/身体/动作/学校/动物植物。
+// 手工 15 字已有精调字形（CHINESE_PARTS），此处跳过避免重名。
+const COMMON_HANZI = (
+    '人口手足耳目眉爸妈母爷奶子女哥弟姐妹' +   // 家人与身体
+    '日月星云天山水火风雨雪石田土' +           // 自然
+    '左右中前后里外东西南北' +                 // 方位
+    '大小多少高低长短短方圆' +                 // 形状量
+    '来去出入开关坐立走跑看听说读写画想问' +   // 动作
+    '学校书笔纸字课老你好我他她朋友' +         // 学校社交
+    '鸟鱼虫马牛羊狗猫兔鸡' +                   // 动物
+    '木林森花草树叶竹禾米果' +                 // 植物
+    '春夏秋冬早午晚夜年' +                     // 时间
+    '红黄蓝绿黑白彩色' +                       // 颜色
+    '车飞机船路桥门窗家床灯' +                 // 生活
+    '吃喝玩乐睡觉梦' +                         // 日常
+    '心目口手爱笑哭' +                         // 情感（去重后）
+    '刀勺杯碗盘盒包' +                         // 器物
+    '新干净好朋友生日快乐'                     // 常用词单字
+);
+
+// 笔画数 → 难度星级（与手工 15 字的 1-3 星体系一致）
+function hanziLevel(strokeCount) {
+    return strokeCount <= 5 ? 1 : (strokeCount <= 10 ? 2 : 3);
+}
+
+// 字库加载后批量注册常用字形状（跳过手工 15 字与未收录字）
+function expandChineseShapes() {
+    const existing = new Set(Shapes.filter(s => s.category === 'chinese').map(s => s.name));
+    const seen = new Set();
+    for (const ch of COMMON_HANZI) {
+        if (seen.has(ch) || !HanziData.has(ch)) continue;
+        seen.add(ch);
+        const name = '汉字 ' + ch;
+        if (existing.has(name)) continue;   // 手工精调字优先
+        existing.add(name);
+        const strokes = HanziData.data[ch];
+        Shapes.push(polyShape({
+            name: name,
+            level: hanziLevel(strokes.length),
+            category: 'chinese',
+            parts: convertHanziParts(strokes),
+            w: 0.78, h: 0.92,
+        }));
+    }
+    return existing.size;
+}
+
+// 启动即加载字库：先扩充常用字，再按已存名字重建（改名时 parent.js 会再次调用）
 if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', () => {
         HanziData.load().then(() => {
+            if (!HanziData.data) return;
+            expandChineseShapes();
             if (typeof Settings === 'undefined') return;
             const saved = Settings.get('childName', '');
             if (saved) rebuildNameShapes(saved);

@@ -433,6 +433,7 @@
                 <svg viewBox="0 0 24 24" width="24" height="24"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
             <div class="tracing-info">我的作品</div>
+            <button class="picker-action gallery-print-btn" id="gallery-print" title="打印成长画册">🖨 画册</button>
         </div>
         <div class="gallery-body">
             <div class="gallery-grid" id="gallery-grid"></div>
@@ -527,6 +528,7 @@
                 <div class="parent-actions">
                     <button class="picker-action" id="parent-backup">备份全部作品 (ZIP)</button>
                     <button class="picker-action" id="parent-import">从备份恢复</button>
+                    <button class="picker-action" id="parent-guide">重看新手引导</button>
                     <button class="picker-action danger" id="parent-clear-gallery">清空作品集</button>
                     <button class="picker-action danger" id="parent-reset-progress">重置收集进度</button>
                 </div>
@@ -548,6 +550,18 @@
             <div class="rest-title">休息一下眼睛吧</div>
             <div class="rest-count" id="rest-countdown">20</div>
             <div class="rest-tip">看看远处，眨眨眼睛</div>
+        </div>
+    </div>
+
+    <!-- 首次使用引导 -->
+    <div id="guide-overlay" class="rest-overlay" aria-hidden="true">
+        <div class="privacy-card guide-card">
+            <div class="guide-emoji" id="guide-emoji">✍️</div>
+            <div class="privacy-title" id="guide-title"></div>
+            <div class="guide-body" id="guide-body"></div>
+            <div class="guide-dots" id="guide-dots"></div>
+            <button class="picker-action" id="guide-next">下一步</button>
+            <button class="guide-skip" id="guide-skip">跳过引导</button>
         </div>
     </div>
 

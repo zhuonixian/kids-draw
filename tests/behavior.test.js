@@ -312,6 +312,34 @@ assert(
     'Parent zone should save the child name and rebuild name tracing shapes immediately.'
 );
 assert(
+    shapesSrc.includes('COMMON_HANZI') && shapesSrc.includes('expandChineseShapes') && shapesSrc.includes('hanziLevel'),
+    'shapes.js should expand the chinese category from a curated common-char list with stroke-count leveling.'
+);
+try {
+    const hanziForList = JSON.parse(fs.readFileSync(path.join(root, 'assets', 'hanzi', 'hanzi-medians.json'), 'utf8'));
+    const api2 = new Function(shapesSrc + '\nreturn COMMON_HANZI;')();
+    const chars = Array.from(new Set(api2.split('')));
+    const missing = chars.filter(c => c && !hanziForList[c]);
+    assert(chars.length >= 100, `COMMON_HANZI should cover >= 100 unique chars, got ${chars.length}.`);
+    assert(missing.length === 0, `All COMMON_HANZI chars must exist in the medians library, missing: ${missing.join('')}.`);
+} catch (e) {
+    assert(false, 'COMMON_HANZI should evaluate and fully resolve against the shipped library: ' + e.message);
+}
+assert(
+    app.includes('GUIDE_STEPS') && app.includes('showGuide(force)') && app.includes("Settings.set('guided', true)")
+        && index.includes('id="guide-overlay"') && index.includes('id="guide-next"'),
+    'First-run guide should show 3 steps once and persist the guided flag.'
+);
+assert(
+    parent.includes("getElementById('parent-guide')") && parent.includes('App.showGuide(true)')
+        && index.includes('id="parent-guide"'),
+    'Parent zone should offer a replay of the first-run guide.'
+);
+assert(
+    gallery.includes('printAlbum') && gallery.includes('成长画册') && index.includes('id="gallery-print"'),
+    'Gallery should offer one-click growth-album printing via the shared iframe print pipeline.'
+);
+assert(
     index.includes('id="parent-child-name"') && index.includes('id="parent-voice"')
         && index.includes('id="privacy-overlay"') && index.includes('不收集任何数据'),
     'index.html should include the name input, voice toggle, and privacy overlay.'

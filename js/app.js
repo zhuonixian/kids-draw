@@ -13,6 +13,9 @@ const App = {
         this.preventGestures();
         this.bindAudioUnlock();
         this.bindHomeButtons();
+        this.bindGuide();
+        // 首次使用：延迟弹出 3 步导览（家长看后不再打扰）
+        setTimeout(() => this.showGuide(), 600);
     },
 
     // 场景切换
@@ -301,6 +304,70 @@ const App = {
         } catch (e) {
             // 语音失败不影响任何功能
         }
+    },
+
+    // === 首次使用引导：3 步导览（Settings 'guided' 标记；家长中心可重看） ===
+    GUIDE_STEPS: [
+        { emoji: '✍️', title: '描边填色 · 写字识字', body: '沿虚线一笔一笔描，描完涂色！还能练习写自己的名字' },
+        { emoji: '🎨', title: '自由画布 · 想画就画', body: '8 种画笔、134 张贴纸、万花筒对称画，发挥想象力吧' },
+        { emoji: '👪', title: '家长看这里', body: '长按首页右上角 ⚙️ 进入家长中心：设置宝贝名字、开关语音、备份作品都在这里' },
+    ],
+    _guideIdx: 0,
+
+    bindGuide() {
+        const next = document.getElementById('guide-next');
+        const skip = document.getElementById('guide-skip');
+        if (next) next.addEventListener('click', () => this._guideNext());
+        if (skip) skip.addEventListener('click', () => this._hideGuide(true));
+    },
+
+    showGuide(force) {
+        if (!force && Settings.get('guided', false)) return;
+        this._guideIdx = 0;
+        this._renderGuideStep();
+        const ov = document.getElementById('guide-overlay');
+        if (ov) {
+            ov.classList.add('open');
+            ov.setAttribute('aria-hidden', 'false');
+        }
+    },
+
+    _renderGuideStep() {
+        const step = this.GUIDE_STEPS[this._guideIdx];
+        if (!step) return;
+        document.getElementById('guide-emoji').textContent = step.emoji;
+        document.getElementById('guide-title').textContent = step.title;
+        document.getElementById('guide-body').textContent = step.body;
+        const next = document.getElementById('guide-next');
+        if (next) next.textContent = this._guideIdx === this.GUIDE_STEPS.length - 1 ? '开始玩吧 🎉' : '下一步';
+        const dots = document.getElementById('guide-dots');
+        if (dots) {
+            dots.innerHTML = '';
+            this.GUIDE_STEPS.forEach((s, i) => {
+                const d = document.createElement('span');
+                d.className = 'guide-dot' + (i === this._guideIdx ? ' active' : '');
+                dots.appendChild(d);
+            });
+        }
+    },
+
+    _guideNext() {
+        if (this._guideIdx < this.GUIDE_STEPS.length - 1) {
+            this._guideIdx++;
+            this._renderGuideStep();
+        } else {
+            this._hideGuide(true);
+            this.say('开始玩吧！');
+        }
+    },
+
+    _hideGuide(mark) {
+        const ov = document.getElementById('guide-overlay');
+        if (ov) {
+            ov.classList.remove('open');
+            ov.setAttribute('aria-hidden', 'true');
+        }
+        if (mark) Settings.set('guided', true);
     },
 
     playStickerSound() {

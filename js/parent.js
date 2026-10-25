@@ -51,6 +51,13 @@ const ParentZone = {
             });
         }
 
+        // 重看新手引导
+        const guideBtn = document.getElementById('parent-guide');
+        if (guideBtn) guideBtn.addEventListener('click', () => {
+            App.showScene('home');
+            setTimeout(() => App.showGuide(true), 300);
+        });
+
         // 关于与隐私
         const privacyBtn = document.getElementById('parent-privacy');
         if (privacyBtn) privacyBtn.addEventListener('click', () => this._showPrivacy());
