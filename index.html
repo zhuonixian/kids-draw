@@ -215,6 +215,15 @@
                         <path d="M8.6 3.4 V2.2 M8.6 9 V7.8 M6.9 5.6 H5.7 M11.5 5.6 H10.3 M7.4 4.4 L6.6 3.6 M10.2 6.8 L11 7.6" stroke="#F4B942" stroke-width="1.1" stroke-linecap="round"/>
                     </svg>
                 </button>
+                <button class="tool-btn" data-tool="photo" title="照片" aria-label="导入照片当背景涂鸦">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <rect x="8.6" y="3.4" width="6.8" height="3.4" rx="1.3" fill="#FF6B6B"/>
+                        <rect x="3" y="5.8" width="18" height="14.4" rx="3" fill="#FFB347" stroke="#FFFBF0" stroke-width="1.4"/>
+                        <circle cx="12" cy="13" r="4.2" fill="#74B9FF" stroke="#FFFBF0" stroke-width="1.4"/>
+                        <circle cx="12" cy="13" r="1.5" fill="#FFFBF0"/>
+                        <circle cx="17.8" cy="9.2" r="1" fill="#FFE066"/>
+                    </svg>
+                </button>
             </div>
             <div class="toolbar-divider"></div>
             <!-- 画笔类型 -->
@@ -424,6 +433,8 @@
                 <div class="picker-grid scene-grid" id="scene-grid"></div>
             </div>
         </div>
+        <!-- 照片导入：隐藏 file input，工具栏照片按钮触发 -->
+        <input type="file" id="fc-photo-file" accept="image/*" hidden>
     </div>
 
     <!-- 我的作品场景 -->
@@ -447,7 +458,10 @@
             <div class="picker-backdrop" data-close></div>
             <div class="lightbox-body">
                 <img id="lightbox-img" alt="作品预览">
+                <!-- 绘画回放画布：JS 按 img 位置对位叠在作品图上 -->
+                <canvas id="lightbox-replay-canvas" hidden></canvas>
                 <div class="lightbox-actions">
+                    <button class="picker-action" id="lightbox-replay" hidden>▶ 回放</button>
                     <button class="picker-action" id="lightbox-card">做成贺卡</button>
                     <button class="picker-action" id="lightbox-share">分享</button>
                     <button class="picker-action" id="lightbox-download">保存到设备</button>

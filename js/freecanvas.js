@@ -1,4 +1,12 @@
 // === 自由画布模块（v5 - 快照撤销 + 贴纸/图形选择弹层 + 贴纸选中拖动）===
+// 照片导入：源图长边上限（1536×1152×4B≈6.75MiB，防大图撑爆 WebView 堆）
+const PHOTO_MAX_EDGE = 1536;
+// 撤销历史最多保留的非空照片引用条数：更早背景条目 photo 置 null（撤销时 objects/场景照常恢复，仅照片缺失回底色）
+const PHOTO_HISTORY_KEEP = 5;
+// 绘画回放：单幅 record.replay 的 JSON 体积预算（超限逐级：6px 重抽稀→丢照片背景→加大抽稀距离→
+// 压单笔点数上限→丢最早事件；任何作品最终 ≤ 该预算，极端情况放弃回放数据返回 null）
+const REPLAY_MAX_JSON = 100 * 1024;
+
 const FreeCanvas = {
     canvas: null,
     ctx: null,
@@ -41,6 +49,9 @@ const FreeCanvas = {
     symmetry: 'off',
     // 当前场景底图（null = 纯底色）
     canvasScene: null,
+    // 照片背景（内存态，不持久化）：_photoSrc=降采样源图 canvas；_photoCanvas=按画布设备像素尺寸 cover 裁好的层
+    _photoSrc: null,
+    _photoCanvas: null,
     // 场景目录：label 面板用；emoji+css 渐变做缩略
     scenes: {
         none:   { label: '不用了', emoji: '🚫', css: 'linear-gradient(180deg, #FFFFFF, #F0F0F0)' },
@@ -134,6 +145,7 @@ const FreeCanvas = {
         this._cacheCanvas.height = this.canvas.height;
         this._cacheCtx = this._cacheCanvas.getContext('2d');
         this._cacheDirty = true;
+        this._renderPhotoCover(); // 有照片时按新画布尺寸从源图重渲 cover 层（window resize 自动覆盖）
     },
 
     // === UI 初始化 ===
@@ -149,6 +161,13 @@ const FreeCanvas = {
                 if (btn.dataset.tool === 'scene') {
                     App.showToast('🏞 场景：换一个画画的背景，海底太空任你选', 1600);
                     this._togglePanel('scene-panel');
+                    return;
+                }
+                if (btn.dataset.tool === 'photo') {
+                    // 照片是一次性导入动作，不切换画布工具（保持当前笔/贴纸继续涂）
+                    App.showToast('📷 照片：选一张照片当背景涂鸦', 1600);
+                    const photoFile = document.getElementById('fc-photo-file');
+                    if (photoFile) photoFile.click();
                     return;
                 }
                 this.currentTool = btn.dataset.tool;
@@ -281,6 +300,16 @@ const FreeCanvas = {
                 App.showToast('🎲 ' + idea, 3400);
             };
         }
+
+        // 照片文件选择：赋值式绑定（_initUI 每次进场景重跑，addEventListener 会随重进次数叠加触发）
+        const photoInput = document.getElementById('fc-photo-file');
+        if (photoInput) {
+            photoInput.onchange = (e) => {
+                const f = e.target.files && e.target.files[0];
+                e.target.value = ''; // 先取 File 再清 value，连续选同一张照片也能触发
+                if (f) this._onPhotoFile(f);
+            };
+        }
     },
 
     // === 选择弹层（贴纸/图形/场景） ===
@@ -384,6 +413,8 @@ const FreeCanvas = {
             item.innerHTML = `<span class="scene-thumb" style="background:${sc.css}">${sc.emoji}</span><span class="scene-name">${sc.label}</span>`;
             item.onclick = () => {
                 this.canvasScene = key === 'none' ? null : key;
+                this._photoSrc = null; // 场景与照片互斥：选场景即替换照片（不入栈，与换场景不可撤销一致）
+                this._renderPhotoCover();
                 this._cacheDirty = true;
                 this.redraw();
                 if (key !== 'none' && typeof Missions !== 'undefined') Missions.bump('scene', { key });
@@ -535,14 +566,40 @@ const FreeCanvas = {
     },
 
     // === 历史（快照式撤销） ===
+    // 普通快照：仅 objects，不带背景键 → 撤销不动场景/照片（笔画/贴纸/图形/填充/拖动全走这条）
     _pushHistory() {
         this._pushSnapshot(JSON.parse(JSON.stringify(this.objects)));
     },
 
+    // 背景快照：清空/放照片两个背景动作专用，携带旧背景；photo 可为 null = 撤销回「无背景」
+    _pushBgHistory() {
+        this._pushSnapshot({
+            objects: JSON.parse(JSON.stringify(this.objects)),
+            scene: this.canvasScene,
+            photo: this._photoSrc // canvas 存引用不深拷贝，驻留量由 _trimPhotoHistory 定界
+        });
+    },
+
     _pushSnapshot(snap) {
-        this._history.push(snap);
+        // 裸数组 = 普通快照，统一包装成 {objects}；背景条目已是 {objects, scene, photo} 直接入栈
+        const entry = Array.isArray(snap) ? { objects: snap } : snap;
+        this._history.push(entry);
         if (this._history.length > 40) this._history.shift();
+        if (entry.photo) this._trimPhotoHistory();
         this._updateUndoBtn();
+    },
+
+    // 从新到旧仅保留最近 PHOTO_HISTORY_KEEP 条非空照片引用、更早置 null：
+    // 防 40 条历史各持一张大图（40×7.1MB≈284MB）撑爆 WebView 堆；被裁条目撤销时仅照片缺失
+    _trimPhotoHistory() {
+        let keep = 0;
+        for (let i = this._history.length - 1; i >= 0; i--) {
+            const e = this._history[i];
+            if (e.photo) {
+                if (keep < PHOTO_HISTORY_KEEP) keep++;
+                else e.photo = null;
+            }
+        }
     },
 
     _updateUndoBtn() {
@@ -552,7 +609,14 @@ const FreeCanvas = {
 
     _undo() {
         if (!this._history.length) return;
-        this.objects = this._history.pop();
+        const e = this._history.pop();
+        this.objects = e.objects;
+        // 背景条目才带 scene 键：连背景一起恢复；普通撤销不碰背景，避免撤销笔画时背景跳变
+        if ('scene' in e) {
+            this.canvasScene = e.scene;
+            this._photoSrc = e.photo || null;
+            this._renderPhotoCover();
+        }
         this._selectedObj = null;
         this._draggingObj = null;
         this._cacheDirty = true;
@@ -565,11 +629,13 @@ const FreeCanvas = {
     _handleClear(clearBtn) {
         if (this._clearArmed) {
             this._disarmClear();
-            this._pushHistory(); // 清空前入栈，误清空可撤销
+            this._pushBgHistory(); // 清空是背景动作：旧场景/照片随笔迹入栈，误清空可撤销
             this.objects = [];
             this._selectedObj = null;
             this._draggingObj = null;
             this.canvasScene = null; // 清空 = 回到干净画布（场景一并清掉）
+            this._photoSrc = null; // 照片一并清掉，回用户所选底色（不重置 bgColor，沿用现有语义）
+            this._photoCanvas = null;
             this.panX = 0; this.panY = 0;
             this._cacheDirty = true;
             this.redraw();
@@ -591,10 +657,59 @@ const FreeCanvas = {
         if (clearBtn) clearBtn.style.backgroundColor = '';
     },
 
+    // === 照片导入涂鸦 ===
+    _onPhotoFile(file) {
+        // createImageBitmap 优先：按 EXIF 方向摆正（安卓相机竖拍）；不支持/失败回退 ObjectURL + Image
+        const fallback = () => {
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => { URL.revokeObjectURL(url); this._placePhoto(img); };
+            img.onerror = () => URL.revokeObjectURL(url); // 解码失败静默，不打扰孩子
+            img.src = url;
+        };
+        if (window.createImageBitmap) {
+            createImageBitmap(file, { imageOrientation: 'from-image' })
+                .then(bmp => this._placePhoto(bmp))
+                .catch(fallback);
+        } else {
+            fallback();
+        }
+    },
+
+    _placePhoto(bitmap) {
+        this._pushBgHistory(); // 旧背景（场景/照片）入栈，放错可撤销回去
+        this.canvasScene = null; // 照片与场景互斥
+        // 源图降采样到长边 PHOTO_MAX_EDGE 再存引用：撤销历史与 cover 层都从这张小图重渲
+        const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+        const src = document.createElement('canvas');
+        src.width = Math.max(1, Math.round(bitmap.width * scale));
+        src.height = Math.max(1, Math.round(bitmap.height * scale));
+        src.getContext('2d').drawImage(bitmap, 0, 0, src.width, src.height);
+        if (bitmap.close) bitmap.close(); // ImageBitmap 用后释放原生位图（HTMLImageElement 兜底无此方法）
+        this._photoSrc = src;
+        this._renderPhotoCover();
+        this._cacheDirty = true;
+        this.redraw();
+        App.showToast('照片放好啦，开始涂鸦 🖍', 1600);
+        App.say('照片');
+    },
+
+    // 按当前画布设备像素尺寸把 _photoSrc cover 裁好（等比铺满、居中裁掉超出的边）；无照片则清空该层
+    _renderPhotoCover() {
+        if (!this._photoSrc || !this.canvas) { this._photoCanvas = null; return; }
+        const c = document.createElement('canvas');
+        c.width = this.canvas.width;
+        c.height = this.canvas.height;
+        const scale = Math.max(c.width / this._photoSrc.width, c.height / this._photoSrc.height);
+        const dw = this._photoSrc.width * scale, dh = this._photoSrc.height * scale;
+        c.getContext('2d').drawImage(this._photoSrc, (c.width - dw) / 2, (c.height - dh) / 2, dw, dh);
+        this._photoCanvas = c;
+    },
+
     // === 保存作品 ===
     _saveArtwork() {
         if (!this.objects.length) { App.showToast('先画点什么吧～'); return; }
-        const record = ArtworkStore.save(this.canvas, { scene: 'freecanvas', name: '自由画作' });
+        const record = ArtworkStore.save(this.canvas, { scene: 'freecanvas', name: '自由画作', replay: this._buildReplayData() });
         if (record) {
             App.showToast('作品已保存 🎉');
             if (typeof Missions !== 'undefined') Missions.bump('save');
@@ -604,6 +719,124 @@ const FreeCanvas = {
         }
     },
 
+    // === 绘画回放数据（保存时按 objects 快照构建，撤销/删除自动反映） ===
+    // 抽稀：距上一保留点不足 minDist 且时间差不足 200ms 的点丢弃，首末点恒保留。
+    // 毛笔传 1.5（宽度由相邻点距决定，抽稀变大点距会让回放笔锋偏细，低阈值保真）；普通笔型 3px / 重抽稀 6px
+    _thinPoints(points, minDist) {
+        if (points.length <= 2) return points.slice();
+        const out = [points[0]];
+        for (let i = 1; i < points.length - 1; i++) {
+            const last = out[out.length - 1];
+            const dx = points[i].x - last.x, dy = points[i].y - last.y;
+            if (dx * dx + dy * dy >= minDist * minDist || (points[i].t - last.t) >= 200) out.push(points[i]);
+        }
+        out.push(points[points.length - 1]);
+        return out;
+    },
+
+    // 照片背景压 480px JPEG（回放只需认得出底图，约 25-45KB）
+    _photoReplayDataUrl() {
+        if (!this._photoSrc) return null;
+        const scale = Math.min(1, 480 / Math.max(this._photoSrc.width, this._photoSrc.height));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(this._photoSrc.width * scale));
+        c.height = Math.max(1, Math.round(this._photoSrc.height * scale));
+        c.getContext('2d').drawImage(this._photoSrc, 0, 0, c.width, c.height);
+        try { return c.toDataURL('image/jpeg', 0.55); } catch (e) { return null; }
+    },
+
+    _buildReplayData() {
+        const r = this.canvas.getBoundingClientRect();
+        const buildEvents = (normalMin, brushMin) => {
+            const evts = [];
+            this.objects.forEach(o => {
+                if (o.type === 'stroke') {
+                    if (!o.points || !o.points.length) return;
+                    const thinned = this._thinPoints(o.points, o.brushType === 'brush' ? (brushMin || 1.5) : normalMin);
+                    const ev = {
+                        k: 's',
+                        t: o.st || 0,
+                        b: o.brushType,
+                        c: o.color,
+                        z: o.size,
+                        pts: thinned.map(p => [Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10, Math.round((p.t || 0) / 20) * 20])
+                    };
+                    if (o.sym) { ev.sym = o.sym; ev.cx = o.cx; ev.cy = o.cy; }
+                    evts.push(ev);
+                } else {
+                    const copy = JSON.parse(JSON.stringify(o));
+                    delete copy.st; // 出现时刻记在事件 t 上，对象小拷贝里不重复
+                    evts.push({ k: 'o', t: o.st || 0, o: copy });
+                }
+            });
+            // t 稳定排序兑底（复制/拖动会改写 st）；再压缩跨会话空闲：相邻事件间隔 >2s 压到 2s
+            evts.sort((a, b) => a.t - b.t);
+            let prev = 0;
+            evts.forEach(ev => {
+                if (ev.t - prev > 2000) ev.t = prev + 2000;
+                prev = ev.t;
+            });
+            return evts;
+        };
+        const replay = {
+            v: 1,
+            w: Math.round(r.width),
+            h: Math.round(r.height),
+            bg: { color: this.bgColor, scene: this.canvasScene || null, photo: this._photoReplayDataUrl() },
+            events: buildEvents(3)
+        };
+        // 体积梯子（逐级升级直到装进预算，任何作品最终 ≤ REPLAY_MAX_JSON）：
+        // ① >90KB 先 6px 距离重抽稀一次（毛笔仍 1.5px）；② 仍超预算丢照片背景退化纯底色；
+        // ③ 距离抽稀对快笔无效（相邻点距本已 >6px）→ 逐级加大抽稀距离，毛笔阈值同步放宽但封顶 6px 保笔锋；
+        // ④ 仍超限 → 逐级压单笔点数上限（均匀抽点保首末点，末点 t 保住整笔时长）；
+        // ⑤ 极端笔画数量 → 按事件体积从最新往回保留直到装进预算、丢最早事件并归零起始时刻；
+        //    连一个事件都装不下则返回 null（作品图照常保存，仅无回放）
+        const jsonLen = () => JSON.stringify(replay).length;
+        if (jsonLen() > REPLAY_MAX_JSON * 0.9) {
+            replay.events = buildEvents(6);
+        }
+        if (jsonLen() > REPLAY_MAX_JSON) {
+            replay.bg.photo = null;
+        }
+        let minDist = 6;
+        while (jsonLen() > REPLAY_MAX_JSON && minDist < 100) {
+            minDist = Math.round(minDist * 1.6);
+            replay.events = buildEvents(minDist, Math.min(minDist, 6));
+        }
+        const capStrokePoints = (cap) => {
+            replay.events.forEach(ev => {
+                if (ev.k !== 's' || !ev.pts || ev.pts.length <= cap) return;
+                const step = (ev.pts.length - 1) / (cap - 1);
+                const kept = [];
+                for (let i = 0; i < cap - 1; i++) kept.push(ev.pts[Math.round(i * step)]);
+                kept.push(ev.pts[ev.pts.length - 1]);
+                ev.pts = kept;
+            });
+        };
+        let cap = 500;
+        while (jsonLen() > REPLAY_MAX_JSON && cap > 25) {
+            cap = Math.max(25, Math.round(cap * 0.7));
+            capStrokePoints(cap);
+        }
+        if (jsonLen() > REPLAY_MAX_JSON) {
+            const sizes = replay.events.map(ev => JSON.stringify(ev).length + 1);
+            const overhead = jsonLen() - sizes.reduce((a, b) => a + b, 0);
+            let total = overhead, keep = 0;
+            for (let i = sizes.length - 1; i >= 0; i--) {
+                if (total + sizes[i] > REPLAY_MAX_JSON) break;
+                total += sizes[i];
+                keep++;
+            }
+            if (!keep) return null;
+            if (keep < replay.events.length) {
+                replay.events = replay.events.slice(-keep);
+                const t0 = replay.events[0].t || 0;
+                replay.events.forEach(ev => { ev.t = Math.max(0, ev.t - t0); });
+            }
+        }
+        return replay;
+    },
+
     _preloadStickers() {
         if (typeof StickerLibrary === 'undefined') return;
         let pending = 0;
@@ -611,10 +844,36 @@ const FreeCanvas = {
             if (this.stickerImages[sticker.id]) return;
             const img = new Image();
             pending++;
-            img.onload = () => { if (--pending === 0) this.redraw(); };
+            img.onload = () => { if (--pending === 0 && this.canvas) this.redraw(); };
             img.src = sticker.source;
             this.stickerImages[sticker.id] = img;
         });
+    },
+
+    // 按需预加载指定位图的贴纸（画廊回放烤贴纸用）：本会话未进过自由画布时 stickerImages 为空，
+    // _drawStickerObj 会全部落到笑脸兜底圆。返回 Promise，加载完成/失败/超时均 resolve（失败仍走兜底，不阻塞回放）。
+    // 与 _preloadStickers 共用 stickerImages 缓存，幂等可重入。
+    _preloadStickersFor(ids, timeoutMs) {
+        if (typeof StickerLibrary === 'undefined' || !ids || !ids.length) return Promise.resolve();
+        const waits = [];
+        ids.forEach(id => {
+            let img = this.stickerImages[id];
+            if (!img) {
+                const sticker = StickerLibrary.items.find(it => it.id === id);
+                if (!sticker) return;
+                img = new Image();
+                img.src = sticker.source;
+                this.stickerImages[id] = img;
+            }
+            if (img.complete) return;
+            waits.push(new Promise(resolve => {
+                img.addEventListener('load', resolve, { once: true });
+                img.addEventListener('error', resolve, { once: true });
+            }));
+        });
+        if (!waits.length) return Promise.resolve();
+        const timeout = new Promise(resolve => setTimeout(resolve, timeoutMs || 3000));
+        return Promise.race([Promise.all(waits), timeout]);
     },
 
     _shapeIcon(type) {
@@ -846,6 +1105,7 @@ const FreeCanvas = {
             const copy = JSON.parse(JSON.stringify(s));
             copy.x += 28;
             copy.y += 28;
+            copy.st = Math.round(this._nowRel() / 20) * 20; // 副本按当下时刻作为回放"瞬间出现"事件
             this.objects.push(copy);
             this._selectedObj = copy; // 复制后选中新副本，可继续摆放
             if (typeof Missions !== 'undefined') Missions.bump('copy');
@@ -918,9 +1178,17 @@ const FreeCanvas = {
     },
 
     // === 笔画 ===
+    // 回放时间基：惰性初始化一次、永不重置（objects 跨场景保留，onEnter/_handleClear/_undo 一律不触碰，
+    // 重置会让跨场景保留的旧对象混入新时间基，回放顺序颠倒）
+    _nowRel() {
+        if (this._drawT0 == null) this._drawT0 = performance.now();
+        return performance.now() - this._drawT0;
+    },
+
     _startStroke(p) {
         this._isDrawing = true; this._lastPoint = p;
-        this.currentStroke = { type: 'stroke', brushType: this.brushType === 'eraser' ? 'eraser' : this.brushType, color: this.currentColor, size: this.brushType === 'eraser' ? this.brushSize * 2 : this.brushSize, points: [p] };
+        this._strokeT0Abs = performance.now(); // 本笔绝对起点：points[].t 相对它取 20ms 网格
+        this.currentStroke = { type: 'stroke', brushType: this.brushType === 'eraser' ? 'eraser' : this.brushType, color: this.currentColor, size: this.brushType === 'eraser' ? this.brushSize * 2 : this.brushSize, st: Math.round(this._nowRel() / 20) * 20, points: [{ x: p.x, y: p.y, t: 0 }] };
         // 对称画：以落笔时的视口中心为对称轴/对称心（世界坐标），保证所见即所得
         if (this.symmetry !== 'off') {
             const r = this.canvas.getBoundingClientRect();
@@ -937,7 +1205,7 @@ const FreeCanvas = {
         if (!this._isDrawing || !this.currentStroke) return;
         const dx = p.x - this._lastPoint.x, dy = p.y - this._lastPoint.y;
         if (dx * dx + dy * dy < 2) return;
-        this.currentStroke.points.push(p); this._lastPoint = p;
+        this.currentStroke.points.push({ x: p.x, y: p.y, t: Math.round((performance.now() - this._strokeT0Abs) / 20) * 20 }); this._lastPoint = p;
         if (typeof App !== 'undefined' && App.playDrawSound) App.playDrawSound(this.brushType);
         if (!this._pending) { this._pending = true; requestAnimationFrame(() => { this.redraw(); this._pending = false; }); }
     },
@@ -953,13 +1221,13 @@ const FreeCanvas = {
     // === 放置图形 ===
     _placeShape(pos) {
         this._pushHistory(); // 放置前快照
-        this.objects.push({ type: 'shape', shapeType: this.currentShapeType, x: pos.x, y: pos.y, size: this.shapeSize, fillColor: null, strokeColor: this.currentColor, strokeWidth: 3 });
+        this.objects.push({ type: 'shape', shapeType: this.currentShapeType, x: pos.x, y: pos.y, size: this.shapeSize, fillColor: null, strokeColor: this.currentColor, strokeWidth: 3, st: Math.round(this._nowRel() / 20) * 20 }); // st = 回放"瞬间出现"时刻
         this._cacheDirty = true;
         this.redraw();
     },
 
     _placeSticker(pos) {
-        const obj = { type: 'sticker', stickerId: this.currentStickerId, x: pos.x, y: pos.y, size: this.shapeSize * 1.6, rotation: 0 };
+        const obj = { type: 'sticker', stickerId: this.currentStickerId, x: pos.x, y: pos.y, size: this.shapeSize * 1.6, rotation: 0, st: Math.round(this._nowRel() / 20) * 20 };
         this.objects.push(obj);
         this._selectedObj = obj; // 新贴纸默认选中：再点一下删除，按住可拖动
         this._rememberRecent(this.currentStickerId);
@@ -999,6 +1267,14 @@ const FreeCanvas = {
         if (this.canvasScene && this.scenes[this.canvasScene]) {
             ctx.save(); ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
             this._drawScene(ctx, r.width, r.height, this.canvasScene);
+            ctx.restore();
+        }
+
+        // 照片背景：视口坐标不随画布拖动（与场景互斥），画在笔迹缓存层之下——橡皮只擦笔迹不伤照片
+        if (this._photoCanvas) {
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.drawImage(this._photoCanvas, 0, 0);
             ctx.restore();
         }
 

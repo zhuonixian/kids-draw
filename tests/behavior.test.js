@@ -26,6 +26,9 @@ const shapesSrc = fs.readFileSync(path.join(root, 'js', 'shapes.js'), 'utf8');
 const cssSrc = fs.existsSync(path.join(root, 'css', 'style.css'))
     ? fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8')
     : '';
+const sw = fs.existsSync(path.join(root, 'sw.js'))
+    ? fs.readFileSync(path.join(root, 'sw.js'), 'utf8')
+    : '';
 
 assert(
     tracing.includes('maskCanvas') && tracing.includes('outlineCanvas'),
@@ -364,6 +367,62 @@ assert(
 assert(
     !index.includes('rel="stylesheet" media="all"'),
     'Google Fonts stylesheet should stay non-render-blocking.'
+);
+
+// === 照片导入涂鸦 ===
+assert(
+    index.includes('data-tool="photo"') && index.includes('id="fc-photo-file"') && index.includes('accept="image/*"'),
+    'FreeCanvas toolbar should offer a photo tool wired to a hidden image/* file picker.'
+);
+assert(
+    freecanvas.includes('_placePhoto') && freecanvas.includes('_photoCanvas') && freecanvas.includes('_photoSrc')
+        && freecanvas.includes('PHOTO_MAX_EDGE') && freecanvas.includes('PHOTO_HISTORY_KEEP')
+        && freecanvas.includes('_pushBgHistory') && freecanvas.includes("'scene' in"),
+    'Photo backdrops should be downscaled (PHOTO_MAX_EDGE), cover-rendered per canvas size, and undoable via background-history entries with conditional restore.'
+);
+assert(
+    /_placePhoto[\s\S]*?this\.canvasScene = null/.test(freecanvas),
+    'Placing a photo must replace the scene backdrop (photo and scene are mutually exclusive).'
+);
+assert(
+    freecanvas.includes('.onchange =') && !freecanvas.includes("addEventListener('change'"),
+    'Photo picker must bind via onchange assignment (idempotent across scene re-entries); addEventListener(change) would stack handlers.'
+);
+
+// === 绘画回放 ===
+assert(
+    store.includes('replay: meta.replay || null'),
+    'ArtworkStore.save should persist the replay payload from save metadata (null when absent).'
+);
+assert(
+    freecanvas.includes('_buildReplayData') && freecanvas.includes('_thinPoints')
+        && freecanvas.includes('REPLAY_MAX_JSON') && freecanvas.includes('_drawT0 == null'),
+    'FreeCanvas should build replay events with point thinning, a JSON size budget, and a draw time base that is lazily initialized and never reset.'
+);
+assert(
+    freecanvas.includes('capStrokePoints') && freecanvas.includes('slice(-keep)'),
+    'Replay JSON budget must be a hard cap: distance re-thinning is ineffective for fast scribbles (adjacent points already >6px apart), so the ladder must continue with per-stroke point caps and a final oldest-event drop to keep record.replay within REPLAY_MAX_JSON.'
+);
+assert(
+    freecanvas.includes('_preloadStickersFor') && gallery.includes('FreeCanvas._preloadStickersFor'),
+    'Gallery replay must load the referenced sticker bitmaps before baking them; stickerImages is only filled on freecanvas onEnter, so without this every sticker renders as the smiley fallback circle when replaying without having entered freecanvas this session.'
+);
+assert(
+    gallery.includes('_replaySession'),
+    'Replay start is deferred behind async image loads; a session token must guard the deferred rAF kickoff against stop/restart races.'
+);
+assert(
+    gallery.includes('_startReplay') && gallery.includes('_stopReplay') && gallery.includes('_replayPlaying')
+        && gallery.includes('cancelAnimationFrame') && gallery.includes('requestAnimationFrame'),
+    'Gallery should replay artwork on a rAF loop and always cancel it when stopping/closing.'
+);
+assert(
+    index.includes('id="lightbox-replay"') && index.includes('id="lightbox-replay-canvas"'),
+    'Gallery lightbox should expose a replay button and an overlay replay canvas.'
+);
+assert(
+    sw.includes('kids-draw-v11'),
+    'Service worker cache should bump to kids-draw-v11 with the replay sticker-preload and size-cap fixes.'
 );
 
 console.log('behavior checks passed');

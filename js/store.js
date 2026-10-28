@@ -123,6 +123,7 @@ const ArtworkStore = {
             name: meta.name || '我的作品',
             scene: meta.scene || '',
             createdAt: Date.now(),
+            replay: meta.replay || null, // 绘画回放数据（自由画布传入；_localSave/ZIP 导入的记录无此字段 → 无回放按钮）
         };
         this._records.unshift(record);
         const overflow = [];
